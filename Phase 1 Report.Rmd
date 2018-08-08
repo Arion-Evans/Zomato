@@ -1,0 +1,62 @@
+---
+title: "Something about Zomato"
+author: "Arion Barzoucas-Evans (s3650046) & Joshua Grosman (insert student number)"
+date: "08/08/2018"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+  html_document:
+    df_print: paged
+    toc: no
+    toc_depth: '3'
+linkcolor: blue
+header-includes:
+     - \usepackage{float}
+subtitle: MATH 1298 Analysis of Categorical Data Project Phase I
+documentclass: article
+bibliography: references.bib
+---
+
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+# Introduction \label{sec1}
+
+
+
+
+# Data Set
+
+
+
+# Data Preparation
+
+
+In this project, the following `R` packages were used.
+
+```{r, message = FALSE, warning=FALSE}
+
+```
+
+
+
+# Data Visualisation
+
+
+# Summary
+
+
+
+# References
+
+---
+nocite: | 
+  @mlr, @dplyr, @knitr, @ggplot2, @cowplot, @vcd, @googleVis, @ggpubr, @kableExtra, @png, @grid
+...
+
+
