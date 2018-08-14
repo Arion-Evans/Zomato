@@ -1,12 +1,12 @@
 library(mlr)
 library(data.table)
 library(plyr)
+library(dplyr)
 
 zomato = read.csv("zomato.csv")
 zomato = as.data.table(zomato)
 
 countries = read.csv("Country-Code.csv")
-
 
 # Scale cost by currency
 zomato[,Average.Cost.for.two.Std := as.vector(scale(Average.Cost.for.two)), by=Currency]
@@ -27,7 +27,6 @@ for(i in 1:length(unique.cuisines)){
 }
 
 names(zomato) = new.names
-
 
 for(i in 1:length(unique.cuisines)){
 zomato[,unique.cuisines[i]] = ifelse(grepl(unique.cuisines[i],zomato$Cuisines),1,0)
@@ -115,3 +114,57 @@ zomato = zomato[,c("Restaurant.ID","Restaurant.Name","Address",
                    "Is.delivering.now","Switch.to.order.menu",
                    "City","Currency","Rating.color"):=NULL]
 
+################### josh additions ###########################
+#Converting yes/no cols to numeric
+zomato$Has.Table.booking <- revalue(zom$Has.Table.booking, c("No"=0, "Yes"=1))
+zomato$Has.Online.delivery <- revalue(zom$Has.Online.delivery, c("No"=0, "Yes"=1))
+
+#Aggregating country into continent(maybe leave india on its own?)
+Europe <- c("United Kingdom")
+North_America <- c("United States","Canada")
+Asia <- c("India","Indonesia","Singapore","Sri Lanka","UAE","Phillipines","Qatar")
+Oceania <- c("Auatralia", "New Zealand")
+ROW <- c("Brazil","South Africa", "Turkey")
+
+zomato$continent <- case_when(
+  zomato$Country %in% Europe ~ "Europe",
+  zomato$Country %in% North_America ~ "North America",
+  zomato$Country %in% Asia ~ "Asia",
+  zomato$Country %in% Oceania ~ "Oceania",
+  zomato$Country %in% ROW ~ "Rest of World"
+)
+
+zomato$continent<-as.factor(zomato$continent)
+zomato$Country<-NULL
+
+#converting continent to binary
+setDT(zomato)[, c(levels(zomato$continent), "continent") := 
+            c(lapply(levels(continent), function(x) as.integer(x == continent)), .(NULL))]
+
+#returning cuisine to a single column of factors (for visualisation)
+zomato$cuisine<-max.col(zomato[,10:27])
+zomato$cuisine<-zomato$cuisine%>%factor()
+
+zomato$cuisine<-revalue(zomato$cuisine, c("1"=names(zomato[,10]),
+                                          "2"=names(zomato[,11]),
+                                          "3"=names(zomato[,12]),
+                                          "4"=names(zomato[,13]),
+                                          "5"=names(zomato[,14]),
+                                          "6"=names(zomato[,15]),
+                                          "7"=names(zomato[,16]),
+                                          "8"=names(zomato[,17]),
+                                          "9"=names(zomato[,18]),
+                                          "10"=names(zomato[,19]),
+                                          "11"=names(zomato[,20]),
+                                          "12"=names(zomato[,21]),
+                                          "13"=names(zomato[,22]),
+                                          "14"=names(zomato[,23]),
+                                          "15"=names(zomato[,24]),
+                                          "16"=names(zomato[,25]),
+                                          "17"=names(zomato[,26]),
+                                          "18"=names(zomato[,27])))
+#removing binary columns
+zomato = zomato[,c("Seafood","Asian","European",
+                   "Cafe","Fast Food","Bakery","Pizza","Desserts","Other",
+                   "Beverages","Burger","Indian","Finger Food","Healthy Food",
+                   "Continental","Street Food","Raw Meats","South American"):=NULL]
