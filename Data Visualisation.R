@@ -161,11 +161,18 @@ zomato$cuisine<-revalue(zomato$cuisine, c("1"=names(zomato[,11]),
                                           "16"=names(zomato[,26]),
                                           "17"=names(zomato[,27]),
                                           "18"=names(zomato[,28])))
+
+#creating new variable for range of cuisine
+
+zomato$Cuisine_Range = rowSums(zomato[,11:28])
+
 #removing binary columns
 zomato = zomato[,c("Seafood","Asian","European",
                    "Cafe","Fast Food","Bakery","Pizza","Desserts","Other",
                    "Beverages","Burger","Indian","Finger Food","Healthy Food",
                    "Continental","Street Food","Raw Meats","South American"):=NULL]
+
+
 
 
 ################ VISUALISATIONS ###########################################

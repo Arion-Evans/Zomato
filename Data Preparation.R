@@ -6,6 +6,7 @@ library(plyr)
 zomato = read.csv("zomato.csv")
 zomato = as.data.table(zomato)
 
+
 countries = read.csv("Country-Code.csv")
 
 # Scale cost by currency
@@ -123,22 +124,23 @@ zomato$Has.Online.delivery <- revalue(zomato$Has.Online.delivery, c("No"=0, "Yes
 Europe <- c("United Kingdom")
 North_America <- c("United States","Canada")
 Asia <- c("India","Indonesia","Singapore","Sri Lanka","UAE","Phillipines","Qatar")
-Oceania <- c("Auatralia", "New Zealand")
+Oceania <- c("Australia", "New Zealand")
 ROW <- c("Brazil","South Africa", "Turkey")
 
-zomato$continent <- case_when(
-  zomato$Country %in% Europe ~ "Europe",
-  zomato$Country %in% North_America ~ "North America",
-  zomato$Country %in% Asia ~ "Asia",
-  zomato$Country %in% Oceania ~ "Oceania",
-  zomato$Country %in% ROW ~ "Rest of World"
-)
+zomato$continent = zomato$Country
 
-zomato$continent<-as.factor(zomato$continent)
+levels(zomato$continent)[levels(zomato$continent) %in% Europe] = "Europe"
+levels(zomato$continent)[levels(zomato$continent) %in% North_America] = "North America"
+levels(zomato$continent)[levels(zomato$continent) %in% Asia] = "Asia"
+levels(zomato$continent)[levels(zomato$continent) %in% Oceania] = "Oceania"
+levels(zomato$continent)[levels(zomato$continent) %in% ROW] = "Rest of World"
+
 zomato$Country<-NULL
 
 #converting continent to binary
 setDT(zomato)[, c(levels(zomato$continent), "continent") := 
             c(lapply(levels(continent), function(x) as.integer(x == continent)), .(NULL))]
 
+#creating new variable for range of cuisine
 
+zomato$Cuisine_Range = rowSums(zomato[,10:27])

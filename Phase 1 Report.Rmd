@@ -28,11 +28,37 @@ bibliography: references.bib
 # Introduction \label{sec1}
 
 
-
+Zomato is a restaurant search and discovery service founded in 2008. Users can access a plethora of information about restuarants listed on Zomato, including information not available on the restaurant's own website. Such information includes the type of cuisine, opening hours, photos of the menu and the restaurant, pricing, and whetheror not the restaurant offers online delivery. Customers that visit the restaurants have the option of reviewing them and giving them a rating from 0 to 5. Higher rated restaurants receive more attention resulting in higher revenues. As such, understanding how users of Zomato rate restaurants is of great interest to restaurant owners in order to improve their business. The aim of this report is to explore the relationship of several factors like price and cuisine with Zomato ratings using publicly available data found on [Kaggle](https://www.kaggle.com/shrutimehta/zomato-restaurants-data). In phase I exploratory data analysis will be performed on the dataset, including data pre-processing, creation of new variables, and visual representation of the data. This will assist in observing and understanding any relationships present in the data. Following this, a logistic regression model will be fitted in phase II in order to predict the probability of receiving certain ratings according to the values of the chosen explanatory variables.
 
 # Data Set
 
+The dataset used in this report was acquired from [Kaggle](https://www.kaggle.com/shrutimehta/zomato-restaurants-data). It contains 9,551 observations each of which corresponds to a different restaurant and contains the following information:
 
+* *Restaurant.ID*: A unique ID assigned to each restaurant.
+* *Restaurant.Name*: Name of the restaurant.
+* *Country.Code*: Codes corresponding to countries listed in a separate dataset.
+* *City*: Name of the city where the restaurant is located.
+* *Address*: Address of the restaurant.
+* *Locality*: General location of the restaurant (short description).
+* *Locality.Verbose*: General location of the restaurant (long description).
+* *Longitude*: Longitude of the location of the restaurant (geographic coordinates).
+* *Latitude*: Latitude of the location of the restaurant (geographic coordinates).
+* *Cuisines*: Type of cuisine offered by the restaurant.
+* *Average.Cost.for.two*: Average cost for two people (in the countries respective currency).
+* *Currency*: Currency which is used at each restaurant.
+* *Has.Table.booking*: Whether the restaurant offers the option to book a table or not.
+* *Has.Online.delivery*: Whether the restaurant offers delivery through the internet or not.
+* *Is.delivering.now*: Whether the restaurant was delivering at the time the dataset was created or not.
+* *Switch.to.order.menu*: Unclear variable with only one level (No) for all observations.
+* *Price.range*: Categorised price (between 1 and 4).
+* *Aggregate.rating*: Aggregated rating from user votes.
+* *Rating.color*: Categorised rating into a colour code.
+* *Rating.text*: Response variable. Categorised rating with 6 levels (between Poor to Excellent).
+* *Votes*: Number of votes used in the aggregate rating.
+
+
+
+\newpage
 
 # Data Preparation
 
@@ -40,9 +66,242 @@ bibliography: references.bib
 In this project, the following `R` packages were used.
 
 ```{r, message = FALSE, warning=FALSE}
+library(mlr)
+library(data.table)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(vcd)
+library(knitr)
+library(kableExtra)
+```
+
+```{r, message = FALSE, warning=FALSE, include=FALSE}
+# custom str function
+str_format <- function(df){
+  df_sum = data.frame(Variable = names(df),
+                  Class = sapply(df, class),
+                  Cardinality = sapply(df, function(x){
+                    if(class(x) == "factor"){
+                      return(length(levels(x)))
+                    }
+                    return(length(unique(x)))
+                  }),
+                  Levels = sapply(df, function(x){
+                    if(class(x) == "factor"){
+                      return(paste0(head(levels(x)), collapse = ", "))
+                    }
+                    return(paste0(head(unique(x)), collapse = ", "))
+                  }),
+                  First_Values = sapply(df, function(x) paste0(head(x),  collapse = ", ")),
+                  row.names = NULL) 
+  
+  colnames(df_sum)[5] = "First Values"
+  colnames(df_sum)[4] = "First Levels"
+  
+  return(df_sum)
+}
+```
+
+
+```{r, message = FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+zomato = read.csv("zomato.csv")
+zomato = as.data.table(zomato)
+
+countries = read.csv("Country-Code.csv")
 
 ```
 
+As Table 1 indicates, there are no NA values in any of the features. Additionally, according to Table 2 restaurant ID's are unique for every restaurant while there are appears to be some duplicate restaurant names due to the existance of restaurant chains. Furthermore, each restaurant has multiple cuisines which causes the `cuisine` feature to have so many levels. Finally, the `Switch.to.order.menu` feature only has one level ("No") for the entire dataset.
+
+
+```{r, message = FALSE, warning=FALSE, echo=FALSE}
+kable(as.data.frame(summarizeColumns(zomato)),
+      caption = "Feature summary before data preprocessing.",
+      format = "latex") %>% kable_styling(latex_options = c("scale_down","HOLD_position"))
+
+```
+
+```{r, message = FALSE, warning=FALSE, echo=FALSE}
+zomato_temp = zomato
+zomato_temp[,c(2,5:7,10)] = lapply(zomato[,c(2,5:7,10)], strtrim, width = 10)
+
+df = str_format(zomato_temp)
+
+kable(df, caption = "Variable summary for the Zomato dataset\n9551 Observations of 21 Variables",
+        format = "latex") %>% kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+To rectify the identified issues, all unnecessary features were removed. This includes `Restaurant.ID` (unique identifier), `Restaurant.Name` ,`Address`, `Locality`, `Locality.Verbose`, `Is.delivering.now`, `Switch.to.order.menu`, `City`, `Currency`, `Rating.color`. The `Average.Cost.for.two` is in many different currencies and the concept of what is considered expensive would be affected by socio-economic factors in each country. For this reason this feature was standardised by currency. Furthermore, the `cuisines` variable was separated into 18 new binary features using the most prevalent levels within the original `cuisines` variable. Each of these features indicates the presence or absence of that particular cuisine in the restaurant. This way, restaurants can have multiple cuisines. Using these new binary variables, a new feature, `Cuisine_Range`, was created as the sum of all the cuisine binary variables. The `Cuisine_Range` would indicate the number of different cuisines present in a restaurant which may be of interest to the model in deciding a restaurant's rating. Finally, `Has.Table.booking` and `Has.Online.delivery` were recoded into binary variables, the country table was joined to the Zomato dataset through `Country.Code` and then aggregated into a `Continent` feature. Tables 3 and 4 show the data after preprocessing.
+
+```{r, message = FALSE, warning=FALSE, echo=FALSE}
+# Scale cost by currency
+zomato[,Average.Cost.for.two.Std := as.vector(scale(Average.Cost.for.two)), by=Currency]
+
+# Reorder columns and remove original cost column
+zomato = zomato[,c(1:11,22,12:21)]
+zomato = zomato[,Average.Cost.for.two := NULL]
+
+# Create new binary variables for cuisine type (1-C encoding)
+splitdat = do.call("rbind", strsplit(as.character(zomato$Cuisines), ","))
+unique.cuisines = as.vector(unique(as.vector(trimws(splitdat))))
+current.names = as.vector(names(zomato))
+
+new.names = as.vector(matrix(c(current.names,unique.cuisines))) 
+
+for(i in 1:length(unique.cuisines)){
+  zomato[,paste(i)] = rep(0,nrow(zomato))
+}
+
+names(zomato) = new.names
+
+for(i in 1:length(unique.cuisines)){
+zomato[,unique.cuisines[i]] = ifelse(grepl(unique.cuisines[i],zomato$Cuisines),1,0)
+}
+
+
+# Aggregate new variables 
+zomato = zomato[, `:=`(European = French+European+Italian+German+
+                                  Mediterranean+Greek+Spanish+Irish+
+                                  British+Portuguese+Scottish+Belgian,
+                       Asian = Japanese+Chinese+Asian+Filipino+Korean+
+                               Vietnamese+Thai+Singaporean+Malaysian+
+                               Indonesian+Taiwanese+Cantonese+Malay+
+                               Peranakan+Sunda,
+                       `South American` = Brazilian+Mexican+Peruvian+
+                                          `Latin American`+Caribbean+
+                                          Cuban+`South American`+Argentine+
+                                          Mineira,
+                       Indian = Indian+Goan+`South Indian`+`North Indian`+
+                                Rajasthani+Mughlai+Mithai+Maharashtrian+
+                                `Modern Indian`+Biryani+Parsi+Kashmiri+
+                                Bengali+Awadhi+Lucknowi+Gujarati+Oriya+
+                                Hyderabadi+Bihari+Kerala+Andhra+Malwani+
+                                Assamese+Naga+Chettinad+Mangalorean,
+                       American = American+Hawaiian+`New American`+Cajun+Canadian,
+                       `Middle Eastern` = `Middle Eastern`+Arabian+Lebanese+
+                                          Turkish+Pakistani+Persian+Burmese+Tibetan+
+                                          Afghani+Nepalese+Iranian+Izgara+Armenian+Durban,
+                       Other = `Bar Food`+International+Steak+BBQ+Southern+Breakfast+
+                               Sandwich+`Modern Australian`+African+`North Eastern`+`Tex-Mex`+
+                               `Cuisine Varies`+`Charcoal Grill`+`Asian Fusion`+Kiwi+Contemporary+
+                               Ramen+Grill+`Sri Lankan`+Kebab+`World Cuisine`+`Turkish Pizza`+
+                               `Restaurant Cafe`+Southwestern+Diner+Teriyaki+Vegetarian+
+                               Fusion+Deli+`Fish and Chips`+`Dim Sum`+Curry+`South African`+
+                               Bí_rek+`Soul Food`+Moroccan+Dí_ner+`Pub Food`+Tapas+Western+
+                               Australian+Sushi+Salad,
+                       Desserts = Desserts+`Ice Cream`+Patisserie,
+                       `Fast Food` = `Fast Food`+`Gourmet Fast Food`,
+                       Beverages = Beverages+Juices+`Coffee and Tea`+Tea+`Drinks Only`+`Bubble Tea`)]
+
+zomato = zomato[, `:=`(French=NULL,Italian=NULL,German=NULL,
+                    Mediterranean=NULL,Greek=NULL,Spanish=NULL,Irish=NULL,
+                    British=NULL,Portuguese=NULL,Scottish=NULL,Belgian=NULL,
+                    Japanese=NULL,Chinese=NULL,Filipino=NULL,Korean=NULL,
+                    Vietnamese=NULL,Thai=NULL,Singaporean=NULL,Malaysian=NULL,
+                    Indonesian=NULL,Taiwanese=NULL,Cantonese=NULL,Malay=NULL,
+                    Peranakan=NULL,Sunda=NULL,
+                    Brazilian=NULL,Mexican=NULL,Peruvian=NULL,
+                    `Latin American`=NULL,Caribbean=NULL,
+                    Cuban=NULL,Argentine=NULL,Mineira=NULL,
+                    Goan=NULL,`South Indian`=NULL,`North Indian`=NULL,
+                    Rajasthani=NULL,Mughlai=NULL,Mithai=NULL,Maharashtrian=NULL,
+                    `Modern Indian`=NULL,Biryani=NULL,Parsi=NULL,Kashmiri=NULL,
+                    Bengali=NULL,Awadhi=NULL,Lucknowi=NULL,Gujarati=NULL,Oriya=NULL,
+                    Hyderabadi=NULL,Bihari=NULL,Kerala=NULL,Andhra=NULL,Malwani=NULL,
+                    Assamese=NULL,Naga=NULL,Chettinad=NULL,Mangalorean=NULL,
+                    American=NULL,Hawaiian=NULL,`New American`=NULL,Cajun=NULL,Canadian=NULL,
+                    `Middle Eastern`=NULL,Arabian=NULL,Lebanese=NULL,
+                    Turkish=NULL,Pakistani=NULL,Persian=NULL,Burmese=NULL,Tibetan=NULL,
+                    Afghani=NULL,Nepalese=NULL,Iranian=NULL,Izgara=NULL,Armenian=NULL,Durban=NULL,
+                    `Bar Food`=NULL,International=NULL,Steak=NULL,BBQ=NULL,Southern=NULL,Breakfast=NULL,
+                    Sandwich=NULL,`Modern Australian`=NULL,African=NULL,`North Eastern`=NULL,`Tex-Mex`=NULL,
+                    `Cuisine Varies`=NULL,`Charcoal Grill`=NULL,`Asian Fusion`=NULL,Kiwi=NULL,Contemporary=NULL,
+                    Ramen=NULL,Grill=NULL,`Sri Lankan`=NULL,Kebab=NULL,`World Cuisine`=NULL,`Turkish Pizza`=NULL,
+                    `Restaurant Cafe`=NULL,Southwestern=NULL,Diner=NULL,Teriyaki=NULL,Vegetarian=NULL,
+                    Fusion=NULL,Deli=NULL,`Fish and Chips`=NULL,`Dim Sum`=NULL,Curry=NULL,`South African`=NULL,
+                    Bí_rek=NULL,`Soul Food`=NULL,Moroccan=NULL,Dí_ner=NULL,`Pub Food`=NULL,Tapas=NULL,
+                    Western=NULL,Australian=NULL,Sushi=NULL,`Ice Cream`=NULL,Patisserie=NULL,
+                    `Gourmet Fast Food`=NULL,Salad=NULL,Juices=NULL,`Coffee and Tea`=NULL,
+                    Tea=NULL,`Drinks Only`=NULL,`Bubble Tea`=NULL)]
+
+
+# Make variables binary again
+for(j in names(zomato)[-c(1:21)]){
+  set(zomato, i= which(zomato[[j]]>1), j= j, value= 1)
+}   
+
+# Map country code to country
+zomato = merge(zomato,countries,by = "Country.Code")
+zomato = zomato[,Country.Code := NULL]
+
+# Remove remaining unnecessary variables
+zomato = zomato[,c("Restaurant.ID","Restaurant.Name","Address",
+                   "Locality","Locality.Verbose","Cuisines",
+                   "Is.delivering.now","Switch.to.order.menu",
+                   "City","Currency","Rating.color"):=NULL]
+
+
+#Converting yes/no cols to numeric
+zomato$Has.Table.booking <- revalue(zomato$Has.Table.booking, c("No"=0, "Yes"=1))
+zomato$Has.Online.delivery <- revalue(zomato$Has.Online.delivery, c("No"=0, "Yes"=1))
+
+#Aggregating country into continent(maybe leave india on its own?)
+Europe <- c("United Kingdom")
+North_America <- c("United States","Canada")
+Asia <- c("India","Indonesia","Singapore","Sri Lanka","UAE","Phillipines","Qatar")
+Oceania <- c("Australia", "New Zealand")
+ROW <- c("Brazil","South Africa", "Turkey")
+
+zomato$continent = zomato$Country
+
+levels(zomato$continent)[levels(zomato$continent) %in% Europe] = "Europe"
+levels(zomato$continent)[levels(zomato$continent) %in% North_America] = "North America"
+levels(zomato$continent)[levels(zomato$continent) %in% Asia] = "Asia"
+levels(zomato$continent)[levels(zomato$continent) %in% Oceania] = "Oceania"
+levels(zomato$continent)[levels(zomato$continent) %in% ROW] = "Rest of World"
+
+zomato$Country<-NULL
+
+#converting continent to binary
+setDT(zomato)[, c(levels(zomato$continent), "continent") := 
+            c(lapply(levels(continent), function(x) as.integer(x == continent)), .(NULL))]
+
+#creating new variable for range of cuisine
+
+zomato$Cuisine_Range = rowSums(zomato[,10:27])
+
+```
+
+
+```{r, message = FALSE, warning=FALSE, echo=FALSE}
+kable(as.data.frame(summarizeColumns(zomato)),
+      caption = "Feature summary after data preprocessing.",
+      digits = 3) %>% 
+  kable_styling(latex_options = c("scale_down","HOLD_position"))
+
+```
+
+```{r, message = FALSE, warning=FALSE, echo=FALSE}
+cols <- names(zomato)[1:3]
+df = str_format(zomato[,(cols) := round(.SD,3), .SDcols=cols])
+
+kable(df, caption = "Variable summary for the Zomato dataset after preprocessing\n9551 Observations of 21 Variables",
+        format = "latex") %>% kable_styling(latex_options = c("scale_down","HOLD_position"))
+```
+
+```{r, message = FALSE, warning=FALSE, echo=FALSE}
+# get column tables after cleaning
+col.freq = list()
+for (i in (1:ncol(zomato))){
+  col.freq[[i]] = table(zomato[,..i], dnn = colnames(zomato)[i])
+}
+
+col.freq[c(4:6,8,10:33)] %>% kable(caption = "Contingency tables for discrete and categorical variables.",
+                                  format = "latex", booktabs = TRUE) %>% 
+  kable_styling(latex_options = "HOLD_position")
+```
 
 
 # Data Visualisation
@@ -50,13 +309,13 @@ In this project, the following `R` packages were used.
 
 # Summary
 
-
+\newpage
 
 # References
 
 ---
 nocite: | 
-  @mlr, @dplyr, @knitr, @ggplot2, @cowplot, @vcd, @googleVis, @ggpubr, @kableExtra, @png, @grid
+  @mlr, @data.table, @dplyr, @plyr, @ggplot2, @broom,  @vcd, @knitr, @kableExtra,
 ...
 
 
