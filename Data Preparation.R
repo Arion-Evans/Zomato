@@ -1,7 +1,7 @@
 library(mlr)
 library(data.table)
-library(plyr)
 library(dplyr)
+library(plyr)
 
 zomato = read.csv("zomato.csv")
 zomato = as.data.table(zomato)
@@ -116,8 +116,8 @@ zomato = zomato[,c("Restaurant.ID","Restaurant.Name","Address",
 
 ################### josh additions ###########################
 #Converting yes/no cols to numeric
-zomato$Has.Table.booking <- revalue(zom$Has.Table.booking, c("No"=0, "Yes"=1))
-zomato$Has.Online.delivery <- revalue(zom$Has.Online.delivery, c("No"=0, "Yes"=1))
+zomato$Has.Table.booking <- revalue(zomato$Has.Table.booking, c("No"=0, "Yes"=1))
+zomato$Has.Online.delivery <- revalue(zomato$Has.Online.delivery, c("No"=0, "Yes"=1))
 
 #Aggregating country into continent(maybe leave india on its own?)
 Europe <- c("United Kingdom")
@@ -141,30 +141,4 @@ zomato$Country<-NULL
 setDT(zomato)[, c(levels(zomato$continent), "continent") := 
             c(lapply(levels(continent), function(x) as.integer(x == continent)), .(NULL))]
 
-#returning cuisine to a single column of factors (for visualisation)
-zomato$cuisine<-max.col(zomato[,10:27])
-zomato$cuisine<-zomato$cuisine%>%factor()
 
-zomato$cuisine<-revalue(zomato$cuisine, c("1"=names(zomato[,10]),
-                                          "2"=names(zomato[,11]),
-                                          "3"=names(zomato[,12]),
-                                          "4"=names(zomato[,13]),
-                                          "5"=names(zomato[,14]),
-                                          "6"=names(zomato[,15]),
-                                          "7"=names(zomato[,16]),
-                                          "8"=names(zomato[,17]),
-                                          "9"=names(zomato[,18]),
-                                          "10"=names(zomato[,19]),
-                                          "11"=names(zomato[,20]),
-                                          "12"=names(zomato[,21]),
-                                          "13"=names(zomato[,22]),
-                                          "14"=names(zomato[,23]),
-                                          "15"=names(zomato[,24]),
-                                          "16"=names(zomato[,25]),
-                                          "17"=names(zomato[,26]),
-                                          "18"=names(zomato[,27])))
-#removing binary columns
-zomato = zomato[,c("Seafood","Asian","European",
-                   "Cafe","Fast Food","Bakery","Pizza","Desserts","Other",
-                   "Beverages","Burger","Indian","Finger Food","Healthy Food",
-                   "Continental","Street Food","Raw Meats","South American"):=NULL]
