@@ -480,6 +480,38 @@ From Figure 12, it is clear that the restaurants included in this sample mostly 
 
 #Multivariate
 
+```{r}
+ggplot(data=zomato, aes(x=log(Votes+1), y=Average.Cost.for.two.Std)) +
+  geom_point(aes(colour=continent),alpha=.25) +
+  facet_wrap(~Rating.text)+
+  labs(title="Figure 14. Standardised Average Cost by Log of Votes across Continent",
+       x="Votes",
+       y="Average Cost for Two (Standardised)")+
+  scale_colour_manual(values=c_palette,name = "Continent")+theme_minimal()+
+  guides(colour = guide_legend(override.aes = list(alpha=1)))
+```
+
+```{r}
+ggplot(zomato,aes(x=log(Votes+1),fill=Has.Table.booking))+
+  geom_density(alpha=0.5)+facet_grid(continent~Rating.text)+
+  theme_minimal()+
+  labs(title="Figure 15. Distribution of Log of Votes by Table Booking Status\n across Rating and Continent",
+       x="Log of Votes",
+       y="Density")
+```
+
+```{r}
+ggplot(zomato,aes(x=continent,y=Average.Cost.for.two.Std))+
+  geom_boxplot(aes(fill=Rating.text))+theme_minimal()+
+  stat_summary(fun.y = mean, aes(shape="Continent\nMean"), colour = "darkred", geom="point",size=4) +
+  scale_shape_manual("", values=c("Continent\nMean"="\u2666"))+
+  scale_fill_manual(values=c_palette,name = "Rating")+
+  labs(title="Figure 16. Standardised Average Cost for Two \nby Continent and Rating",
+       y="Standardised Average Cost",
+       x="Continent")
+```
+
+
 # Summary
 
 \newpage
