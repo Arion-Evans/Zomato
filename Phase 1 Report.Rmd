@@ -314,33 +314,51 @@ Initially, the proportions of the different levels of the rating response variab
 prop = table(zomato$Rating.text) %>% prop.table() %>% as.data.frame()
 prop$Freq = prop$Freq*100
 
+c_palette<-c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f")
+
 ggplot(data = prop, aes(x = factor(1), y = Freq, fill = Var1)) +
   geom_bar(stat="identity",width = 1) + coord_polar(theta = "y") +
   ditch_the_axes +
   labs(fill = "Rating", title = "Figure 1. Restaurant Rating Percentage Distribution") +
-  geom_text(aes(label = paste(round(Freq,2),"%")), position = position_stack(vjust = 0.5)) 
-
+  geom_text(aes(label = paste(round(Freq,2),"%")), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values=c_palette)
 ```
 
 Here it can be seen that the majority of restaurant ratings in the dataset were average. Only a small portion received a rating of either poor or excellent. Furthermore, more than 20% of restaurants in the dataset were not rated. (filter?)
 
-...WORLD MAP...
-
-Next, the average cost of meal was considered with respect to ratings.
+Next, the average cost of meal was considered both on its own and with respect to ratings. The associated visualisations are shown in Figures 2 and 3, respectively.
 
 ```{r}
-ggplot(zomato, aes(x=Average.Cost.for.two.Std)) +   
+ggplot(zomato, aes(x=Average.Cost.for.two.Std)) +
   geom_histogram(aes(y=..density..)) + 
-  geom_density(aes(y=..density..),fill="lightpink3",alpha=.5)+
-  facet_wrap(~Rating.text)+
-  theme_minimal()+labs(title="Figure 2. Standardised Average Cost for Two by Rating",
+  geom_density(aes(y=..density..),fill=c_palette[4],alpha=.5)+
+  theme_minimal()+labs(title="Figure 2. Distribution of Standardised Average Cost",
                        x="Standardised Avergage Cost",
                        y="Density")
 ```
 
-From this it is clear that restaurants with good, very good and excellent ratings all seem to have a similar distribution of average cost, with the average meal cost for many of these restaurants being quite expensive. This characteristic is not as clear in the other levels, which are more normal in appearance. This suggests that higher rating restaurants are more expensive.
 
-The proportions of ratings according to whether or not the restaurant had the option for table booking is shown below in Figure 3.
+```{r, warning=FALSE}
+ggplot(zomato, aes(x=Average.Cost.for.two.Std)) +   
+  geom_histogram(aes(y=..density..)) + 
+  geom_density(aes(y=..density..),fill=c_palette[4],alpha=.5)+
+  facet_wrap(~Rating.text)+
+  theme_minimal()+labs(title="Figure 3. Distribution of Standardised Average Cost for Two by Rating",
+                       x="Standardised Avergage Cost",
+                       y="Density")
+```
+
+Figure 2 gives a general idea of the average cost for all restaurants included in the dataset. Evidently, the distribution has normal-like qualities with respect to its bell-shaped curve. There is, however, a clear spike in restaurants which may be considered to have a very expensive average cost. From Figure 3, it is clear that all rating levels have a similar distribution to Figure 2, however the spike in expensive average meal cost can be seen to become more profound as rating goes up towards excellent. This would suggest that high rated restaurants are more likely to be more expensive on average.
+
+Next, the binary variable describing whether or not a restaurant had the option to book a table was considered on it own and according to restaurant rating.
+
+```{r}
+ggplot(zomato,aes(x=Has.Table.booking))+
+  geom_bar(fill=c_palette[4])+
+  theme_minimal()+labs(title="Figure 4. Count of Table Booking Status",
+                       x="Table Booking",
+                       y="Count")
+```
 
 ```{r}
 table_rate <- table(zomato$Has.Table.booking,zomato$Rating.text, dnn = c("Table Booking","Rating"))
@@ -349,13 +367,22 @@ colnames(prop.table_rate) <- c("Table Booking","Rating","Proportion")
 
 p1<-ggplot(prop.table_rate,aes(x=`Table Booking`,y=Proportion,fill=Rating))
 p1+geom_bar(stat="identity",position="dodge")+
-  labs(title="Figure 3. Proportions of Rating by Table Booking Status") +
-  theme_minimal()
+  labs(title="Figure 5. Proportions of Rating by Table Booking Status") +
+  theme_minimal()+
+  scale_fill_manual(values=c_palette)
 ```
 
-The option of booking a table can be seen to have some effect on the rating of a restaurant with restaurants which do offer table booking having higher propotions of good and very good ratings.
+Figure 4 shows that overall, there are much more restaurants which do not offer table booking in the present sample than those that do. Figure 5 bypasses this issues by examining the relative proportions of rating within each level. Here, the option of booking a table can be seen to have some effect on the rating of a restaurant, with restaurants which do offer table booking having higher propotions of good and very good ratings.
 
-A similar visualisation was used to compare the effect of having online delivery with regard to ratings.
+Similar visualisations were used to compare the effect of having online delivery with regard to ratings, as shown in Figures 6 and 7.
+
+```{r}
+ggplot(zomato,aes(x=Has.Online.delivery))+
+  geom_bar(fill=c_palette[4])+
+  theme_minimal()+labs(title="Figure 6. Count of Online Delivery Status",
+                       x="Online Delivery",
+                       y="Count")
+```
 
 ```{r}
 del_rate <- table(zomato$Has.Online.delivery,zomato$Rating.text, dnn = c("Online Delivery","Rating"))
@@ -364,25 +391,36 @@ colnames(prop.del_rate) <- c("Online Delivery","Rating","Proportion")
 
 p2<-ggplot(prop.del_rate,aes(x=`Online Delivery`,y=Proportion,fill=Rating))
 p2+geom_bar(stat="identity",position="dodge")+
-  labs(title="Figure 4. Proportions of Rating by Online Delivery Status") +
-  theme_minimal()
+  labs(title="Figure 7. Proportions of Rating by Online Delivery Status") +
+  theme_minimal()+
+  scale_fill_manual(values=c_palette)
 ```
 
-Figure 4 suggests that having the option of online delivery has little effect on restaurant ratings (aside from restaurants which do not have the online delivery being more likely to not be rated).
+From Figure 6 it can be seen that restaurants which do not offer online delivery are more prevalent in the dataset than those which do offer it. Figure 7 suggests that having the option of online delivery has little effect on restaurant ratings (aside from restaurants which do not have online delivery being more likely to not be rated).
 
-Next, the amount of customer votes each restaurant received was considered alongside rating. Due to issues with scale, the log transformation was applied to customer votes.
+Next, the amount of customer votes each restaurant received was considered. Due to issues with scale, the log transformation was applied to customer votes.
 
 ```{r}
-ggplot(data = zomato, aes(x = Rating.text, y = log(Votes+1))) +
-  geom_boxplot(fill = "lightpink3") + theme_minimal() +
-  labs(x = "Rating",
-       title = "Figure 5. Log of Customer Votes by Restaurant Rating",
-       y="Log of Votes")
+ggplot(data = zomato, aes(x = log(Votes+1))) +
+  geom_histogram(aes(y=..density..)) + 
+  geom_density(aes(y=..density..),fill=c_palette[4],alpha=.5)+
+  labs(x = "Log of Votes",
+       title = "Figure 8. Distribution of Log of Customer Votes")
 ```
 
-Here, a trend can be observed wherein higher ratings appear to be associated with more votes. This trend is however disrupted for restaurants which receive an average rating. This maybe due to customers being more likely to convey their underwhelming experiences at a poor-rated restaurant than mediocre experiences at an average-rated restaurant.
+```{r}
+ggplot(zomato, aes(x=log(Votes+1))) +   
+  geom_histogram(aes(y=..density..)) + 
+  geom_density(aes(y=..density..),fill=c_palette[4],alpha=.4)+
+  facet_wrap(~Rating.text)+
+  theme_minimal()+labs(title="Figure 9. Distributions of Log of Customer Votes by Rating",
+                       x="Log of Votes",
+                       y="Density")
+```
 
-The continent the restuarant was located in was then considered. Figure 6 below depicts a world map of the location of all restaurants within the dataset. Figure 7 then considers the proportional distribtuion of ratings across the continents.
+Figure 8 demonstrates a fairly normal distribution, with clear deviations in the left tail. This may be attributable to restaurants which reeceive zero votes. A trend can be observed within Figure 9, wherein higher ratings appear to be associated with more votes. This trend is however disrupted for restaurants which receive an average rating, which seem to have fewer votes on average. This maybe due to customers being more likely to convey an underwhelming experiences at a poor-rated restaurant than a mediocre experiences at an average-rated restaurant.
+
+The continent the restuarant was located in was then considered. Figure 10 below depicts a world map of the location of all restaurants within the dataset. Figure 11 then considers the proportional distribtuion of ratings across the continents.
 
 ```{r}
 WorldData <- map_data('world')
@@ -398,36 +436,47 @@ p <- p + geom_map(data=WorldData, map=WorldData,
   coord_map("rectangular", lat0=0, xlim=c(-180,180), ylim=c(-60, 90)) +
   scale_y_continuous(breaks=c()) +
   scale_x_continuous(breaks=c()) +
-  labs(fill="legend", title="Figure 6. Restaurant Locations", x="", y="") +
+  labs(fill="legend", title="Figure 10. Restaurant Locations", x="", y="") +
   theme_bw() +
   theme(panel.border = element_blank())
 ```
+
 ```{r}
 cont_rate <- table(zomato$continent,zomato$Rating.text, dnn = c("Continent","Rating"))
 prop.cont_rate<-data.frame(prop.table(cont_rate,1))
 colnames(prop.cont_rate) <- c("Continent","Rating","Proportion")
 
-p5<-ggplot(prop.cont_rate,aes(x=Continent,y=Proportion,fill=Rating))
-p5+geom_bar(stat="identity",position="dodge")+
-  labs(title="Figure 7. Proportions of Rating within Continent") +
-  theme_minimal()
+p3<-ggplot(prop.cont_rate,aes(x=Continent,y=Proportion,fill=Rating))
+p3+geom_bar(stat="identity",position="dodge")+
+  labs(title="Figure 11. Proportions of Rating within Continent") +
+  theme_minimal()+
+  scale_fill_manual(values=c_palette)
 ```
 
 ...Map Interpretation...
 
-Inspection of the relative proportions of ratings within each continents highlights that despite being overrepresented in the data, Asian restaurants have relatively low proportions of very good and excellent rated restaurants in comparison to other continents. (Asia has the highest proprotion of not rated restaurants), while Oceana has approximately 66% of ratings at the very good or excellent levels.
+Inspection of Figure 11 highlights that despite being overrepresented in the data, Asian restaurants have relatively low proportions of very good and excellent rated restaurants in comparison to other continents. (Asia has the highest proprotion of not rated restaurants), while North America appears to have a relatively high proportion of good-rated restaurants.
 
-The type of restaurant cuisine was then considered with respect to ratings. Here, the continous rating variable was used for simplicity and interpretability. 
+The counts of the different restaurant cuisines were then visualised in Figure 12. Figure 13 considers the cuisine type with respect to rating, but here the continous aggregate rating variable was used over the discrete version for simplicity and interpretability. 
+
+```{r}
+ggplot(data=zomato,aes(x=cuisine))+
+  geom_bar(fill=c_palette[4])+theme_minimal()+
+  labs(title="Figure 12. Count of Restaurant Cuisine",
+       x="Cuisine",
+       y="Count")+
+  theme(axis.text.x = element_text(angle = 45))
+```
 
 ```{r}
 ggplot(data = zomato, aes(y = Aggregate.rating, x = "")) +
-  geom_boxplot(fill = "lightpink3") + facet_wrap(~cuisine, ncol = 6) +
-  theme_minimal() + labs(title = "Figure 8. Aggregate Restaurant Rating by Cuisine",
+  geom_boxplot(fill = c_palette[4]) + facet_wrap(~cuisine, ncol = 6) +
+  theme_minimal() + labs(title = "Figure 13. Aggregate Restaurant Rating by Cuisine",
                          y = "Aggregate Rating",
                          x = "Cuisine")
 ```
 
-From this, it is clear that almost all cuisines are centered around an aggregate rating of 3 to 4, which would equate to ratings of good and very good, respectively. Furthermore, most cuisine types appear to have very little variablity, however others, such as bakery, beverages, street food and raw meats are shown to have a very large interquartile range. This suggests high variability in the aggregate ratings of these kinds of restaurants.
+From Figure 12, it is clear that the restaurants included in this sample mostly belong to either Indian or Asian cuisines. Figure 13 highlights that almost all cuisines are centered around an aggregate rating of 3 to 4, which would equate to ratings of good and very good, respectively. Furthermore, most cuisine types appear to have very little variablity, however others, such as bakery, beverages, street food, Indian and raw meats are shown to have a very large interquartile range. This suggests high variability in the aggregate ratings of these kinds of restaurants.
 
 #Multivariate
 
