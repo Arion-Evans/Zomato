@@ -418,7 +418,7 @@ ggplot(zomato, aes(x=log(Votes+1))) +
                        y="Density")
 ```
 
-Figure 8 demonstrates a fairly normal distribution, with clear deviations in the left tail. This may be attributable to restaurants which reeceive zero votes. A trend can be observed within Figure 9, wherein higher ratings appear to be associated with more votes. This trend is however disrupted for restaurants which receive an average rating, which seem to have fewer votes on average. This maybe due to customers being more likely to convey an underwhelming experiences at a poor-rated restaurant than a mediocre experiences at an average-rated restaurant.
+Figure 8 demonstrates a fairly normal distribution, with clear deviations in the left tail. This may be attributable to restaurants which reeceive zero votes. A trend can be observed within Figure 9, wherein higher ratings appear to be associated with more votes. This trend is however disrupted for restaurants which receive an average rating, which seem to have fewer votes on average. This may be due to customers being more likely to convey an underwhelming experience at a poor-rated restaurant than a mediocre experiences at an average-rated restaurant.
 
 The continent the restuarant was located in was then considered. Figure 10 below depicts a world map of the location of all restaurants within the dataset. Figure 11 then considers the proportional distribtuion of ratings across the continents.
 
@@ -455,9 +455,9 @@ p3+geom_bar(stat="identity",position="dodge")+
 
 ...Map Interpretation...
 
-Inspection of Figure 11 highlights that despite being overrepresented in the data, Asian restaurants have relatively low proportions of very good and excellent rated restaurants in comparison to other continents. (Asia has the highest proprotion of not rated restaurants), while North America appears to have a relatively high proportion of good-rated restaurants.
+Inspection of Figure 11 highlights that despite being overrepresented in the data, Asian restaurants have relatively low proportions of very good and excellent rated restaurants in comparison to other continents. (Asia has the highest proprotion of not rated restaurants). North America appears to have a relatively high proportion of good-rated restaurants and Europe has the highest proportion of excellent-rated restaurants.
 
-The counts of the different restaurant cuisines were then visualised in Figure 12. Figure 13 considers the cuisine type with respect to rating, but here the continous aggregate rating variable was used over the discrete version for simplicity and interpretability. 
+The counts of the different restaurant cuisines were then visualised in Figure 12. Figure 13 considers the cuisine type with respect to rating, but here, the continous aggregate rating variable was used over the discrete version for simplicity and interpretability. 
 
 ```{r}
 ggplot(data=zomato,aes(x=cuisine))+
