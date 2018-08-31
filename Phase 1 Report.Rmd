@@ -491,6 +491,8 @@ ggplot(data=zomato, aes(x=log(Votes+1), y=Average.Cost.for.two.Std)) +
   guides(colour = guide_legend(override.aes = list(alpha=1)))
 ```
 
+Figure 14 serves to highlight several interesting features within the sample. Foremost, the imbalance of data across the continents as well as rating levels is very clear. The abundance of aqua suggests that most of the restaurants are from Asia, while the density of points also shows that most of the restaurants received an average rating. Furthermore, the disperson of points in all facets demonstrates that there is no apparent relationship between the cost of a meal and the amount of votes a restaurant receives. It also seems that Asian restaurants are overrepresented in the average and not rated levels, while there is a more even distribution of the continents across the other rating levels. This is besides for the excellent rating, where the proportion of Asian restaurants is relatively low.
+
 ```{r}
 ggplot(zomato,aes(x=log(Votes+1),fill=Has.Table.booking))+
   geom_density(alpha=0.5)+facet_grid(continent~Rating.text)+
@@ -499,6 +501,8 @@ ggplot(zomato,aes(x=log(Votes+1),fill=Has.Table.booking))+
        x="Log of Votes",
        y="Density")
 ```
+
+Figure 15 examines how the number of votes a restaurant receives is influenced by its rating, continent and whether table booking is available. There is clearly some issues with data sparsity evidenced by the empty facets. The imbalance of the table booking variable can also be seen with restaurants in Asia being the only ones which consistently have table bookings avaialbe for each rating level. Based on this, as well as the other facets which allow for comparison for the two table booking levels, it can be seen that typically the mode of votes is higher for restaurants which offer table booking compared to those which do not.
 
 ```{r}
 ggplot(zomato,aes(x=continent,y=Average.Cost.for.two.Std))+
