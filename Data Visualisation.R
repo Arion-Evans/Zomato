@@ -202,21 +202,21 @@ ggplot(data = zomato, aes(x = cuisine)) +
 
 WorldData <- map_data('world')
 WorldData <- WorldData %>% filter(region != "Antarctica")
-WorldData <- tidy(WorldData)
+
 
 
 p <- ggplot()
 p <- p + geom_map(data=WorldData, map=WorldData,
                   aes(x=long, y=lat, group=group, map_id=region),
                   fill="antiquewhite", colour="#7f7f7f", size=0.5) +
-  geom_point(data = zomato, aes(x = Longitude, y = Latitude),colour = "red4") +
+  geom_point(data = zomato, aes(x = Longitude, y = Latitude),colour = "red4", size = 0.5) +
   coord_map("rectangular", lat0=0, xlim=c(-180,180), ylim=c(-60, 90)) +
   scale_y_continuous(breaks=c()) +
   scale_x_continuous(breaks=c()) +
   labs(fill="legend", title="Restaurant locations", x="", y="") +
   theme_bw() +
   theme(panel.border = element_blank())
-
+p
 # Rating (numeric)
 ggplot(data = zomato, aes(x = Aggregate.rating)) +
   geom_bar(fill = "lightpink3") +
@@ -294,4 +294,12 @@ ggplot(data = zomato, aes(x = Rating.text, y = Average.Cost.for.two.Std)) +
        y = "Average cost for two people (standardised)")
 
 
+cont_rate <- table(zomato$continent,zomato$Rating.text, dnn = c("Continent","Rating"))
+prop.cont_rate<-data.frame(prop.table(cont_rate,1))
+colnames(prop.cont_rate) <- c("Continent","Rating","Proportion")
 
+p3<-ggplot(prop.cont_rate,aes(x=Continent,y=Proportion,fill=Rating))
+p3+geom_bar(stat="identity",position="dodge")+
+  labs(title="Figure 11. Proportions of Rating within Continent") +
+  theme_minimal()+
+  scale_fill_manual(values=c_palette)

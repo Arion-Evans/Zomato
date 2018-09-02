@@ -1,7 +1,7 @@
 ---
-title: "Something about Zomato"
-author: "Arion Barzoucas-Evans (s3650046) & Joshua Grosman (insert student number)"
-date: "08/08/2018"
+title: "Predicting Zomato restaurant ratings with logistic regression"
+author: "Arion Barzoucas-Evans (s3650046) & Joshua Grosman (s3494389)"
+date: "02/09/2018"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -61,7 +61,7 @@ fig_nums(name = "cost-continent-rating", caption = "Distribution of the standard
 # Introduction \label{sec1}
 
 
-Zomato is a restaurant search and discovery service founded in 2008. Users can access a plethora of information about restuarants listed on Zomato, including information not available on the restaurant's own website. Such information includes the type of cuisine, opening hours, photos of the menu and the restaurant, pricing, and whetheror not the restaurant offers online delivery. Customers that visit the restaurants have the option of reviewing them and giving them a rating from 0 to 5. Higher rated restaurants receive more attention resulting in higher revenues. As such, understanding how users of Zomato rate restaurants is of great interest to restaurant owners in order to improve their business. The aim of this report is to explore the relationship of several factors like price and cuisine with Zomato ratings using publicly available data found on [Kaggle](https://www.kaggle.com/shrutimehta/zomato-restaurants-data). In phase I exploratory data analysis will be performed on the dataset, including data pre-processing, creation of new variables, and visual representation of the data. This will assist in observing and understanding any relationships present in the data. Following this, a logistic regression model will be fitted in phase II in order to predict the probability of receiving certain ratings according to the values of the chosen explanatory variables.
+Zomato is a restaurant search and discovery service founded in 2008. Users can access a plethora of information about restaurants listed on Zomato, including information not available on the restaurant's own website. Such information includes the type of cuisine, opening hours, photos of the menu and the restaurant, pricing, and whether the restaurant offers online delivery. Customers that visit the restaurants have the option of reviewing them and giving them a rating from 0 to 5. Higher rated restaurants receive more attention resulting in higher revenues. As such, understanding how users of Zomato rate restaurants is of great interest to restaurant owners in order to improve their business. The aim of this report is to explore the relationship of several factors like price and cuisine with Zomato ratings using publicly available data found on [Kaggle](https://www.kaggle.com/shrutimehta/zomato-restaurants-data). In phase I exploratory data analysis will be performed on the dataset, including data pre-processing, creation of new variables, and visual representation of the data. This will assist in observing and understanding any relationships present in the data. Following this, a logistic regression model will be fitted in phase II in order to predict the probability of receiving certain ratings according to the values of the chosen explanatory variables.
 
 # Data Set
 
@@ -86,7 +86,7 @@ The dataset used in this report was acquired from [Kaggle](https://www.kaggle.co
 * *Price.range*: Categorised price (between 1 and 4).
 * *Aggregate.rating*: Aggregated rating from user votes.
 * *Rating.color*: Categorised rating into a colour code.
-* *Rating.text*: Response variable. Categorised rating with 6 levels (between Poor to Excellent).
+* *Rating.text*: Response variable. Categorised rating with 6 levels (from Poor to Excellent).
 * *Votes*: Number of votes used in the aggregate rating.
 
 
@@ -157,7 +157,7 @@ countries = read.csv("Country-Code.csv")
 
 ```
 
-As Table 1 indicates, there are no NA values in any of the features. Additionally, according to Table 2 restaurant ID's are unique for every restaurant while there are appears to be some duplicate restaurant names due to the existance of restaurant chains. Furthermore, each restaurant has multiple cuisines which causes the `cuisine` feature to have a large amount of levels. Finally, the `Switch.to.order.menu` feature only has one level ("No") for the entire dataset.
+As Table 1 indicates, there are no NA values in any of the features. Additionally, according to Table 2 restaurant ID's are unique for every restaurant while it seems there are some duplicate restaurant names due to the existence of restaurant chains. Furthermore, each restaurant has multiple cuisines which causes the `cuisine` feature to have a large amount of levels. Finally, the `Switch.to.order.menu` feature only has one level ("No") for the entire dataset.
 
 
 ```{r, message = FALSE, warning=FALSE, echo=FALSE}
@@ -177,7 +177,7 @@ kable(df, caption = "Variable summary for the Zomato dataset\n9551 Observations 
         format = "latex") %>% kable_styling(latex_options = c("scale_down","HOLD_position"))
 ```
 
-To rectify the identified issues, all unnecessary features were removed. This includes `Restaurant.ID` (unique identifier), `Restaurant.Name` ,`Address`, `Locality`, `Locality.Verbose`, `Is.delivering.now`, `Switch.to.order.menu`, `City`, `Currency`, `Rating.color`. The `Average.Cost.for.two` is in many different currencies and the concept of what is considered expensive would be affected by socio-economic factors in each country. For this reason this feature was standardised by currency. Furthermore, the `cuisines` variable was separated into 18 new binary features using the most prevalent levels within the original `cuisines` variable. Each of these features indicates the presence or absence of that particular cuisine in the restaurant. This way, restaurants can have multiple cuisines. Using these new binary variables, a new feature, `Cuisine_Range`, was created as the sum of all the cuisine binary variables. The `Cuisine_Range` would indicate the number of different cuisines present in a restaurant which may be of interest to the model in deciding a restaurant's rating. `Has.Table.booking` and `Has.Online.delivery` were recoded into binary variables, the country table was joined to the Zomato dataset through `Country.Code` and then aggregated into a `Continent` feature. Finally, the levels of the response variable, `Rating.text`, originally included the level "Not stated". As it is not reasonable to predict this level, all associated instances were removed from the data. Tables 3 and 4 show the data after all preprocessing.
+To rectify the identified issues, all unnecessary features were removed. This includes `Restaurant.ID` (unique identifier), `Restaurant.Name`, `Address`, `Locality`, `Locality.Verbose`, `Is.delivering.now`, `Switch.to.order.menu`, `City`, `Currency`, `Rating.color`. The `Average.Cost.for.two` is in many different currencies and the concept of what is considered expensive would be affected by socio-economic factors in each country. For this reason, this feature was standardised by currency. Furthermore, the `cuisines` variable was separated into 18 new binary features using the most prevalent levels within the original `cuisines` variable. Each of these features indicate the presence or absence of that particular cuisine in the restaurant. This way, restaurants can have multiple cuisines. Using these new binary variables, a new feature, `Cuisine_Range`, was created as the sum of all the cuisine binary variables. The `Cuisine_Range` would indicate the number of different cuisines present in a restaurant which may be of interest to the model in deciding a restaurant's rating. `Has.Table.booking` and `Has.Online.delivery` were recoded into binary variables, the country table was joined to the Zomato dataset through `Country.Code` and then aggregated into a `Continent` feature. Finally, the levels of the response variable, `Rating.text`, originally included the level "Not rated". As it is not reasonable to predict this level, all associated instances were removed from the data. Tables 3 and 4 show the data after all pre-processing.
 
 ```{r, message = FALSE, warning=FALSE, echo=FALSE}
 # Scale cost by currency
@@ -316,8 +316,13 @@ setDT(zomato)[, c(levels(zomato$continent), "continent") :=
 
 zomato$Cuisine_Range = rowSums(zomato[,10:27])
 
+# aggregate cuisine range
+zomato$Cuisine_Range = as.factor(zomato$Cuisine_Range)
+levels(zomato$Cuisine_Range)[levels(zomato$Cuisine_Range) %in% c("5","6","7","8")] = ">4"
+
+
 #removing not rated level from rating.text
-#zomato<-zomato%>%filter(Rating.text != "Not rated")
+zomato = zomato[Rating.text != "Not rated"] %>% droplevels()
 ```
 
 
@@ -334,7 +339,7 @@ kable(as.data.frame(summarizeColumns(zomato)),
 cols <- names(zomato)[1:3]
 df = str_format(zomato[,(cols) := round(.SD,3), .SDcols=cols])
 
-kable(df, caption = "Variable summary for the Zomato dataset after preprocessing\n9551 Observations of 21 Variables",
+kable(df, caption = "Variable summary for the Zomato dataset after preprocessing\n7403 Observations of 33 Variables",
         format = "latex") %>% kable_styling(latex_options = c("scale_down","HOLD_position"))
 ```
 
@@ -513,6 +518,11 @@ zomato$cuisine<-revalue(zomato$cuisine, c("1"=names(zomato[,11]),
 
 zomato$Cuisine_Range = rowSums(zomato[,11:28])
 
+# aggregate cuisine range
+zomato$Cuisine_Range = as.factor(zomato$Cuisine_Range)
+levels(zomato$Cuisine_Range)[levels(zomato$Cuisine_Range) %in% c("5","6","7","8")] = ">4"
+
+
 #removing binary columns
 zomato = zomato[,c("Seafood","Asian","European",
                    "Cafe","Fast Food","Bakery","Pizza","Desserts","Other",
@@ -563,7 +573,7 @@ ggplot(zomato, aes(x=Average.Cost.for.two.Std)) +
 
 \hfill\break
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.width=7, fig.height=6}
 ggplot(zomato, aes(x=Average.Cost.for.two.Std)) +   
   geom_histogram(aes(y=..density..)) + 
   geom_density(aes(y=..density..),fill=c_palette[4],alpha=.5)+
@@ -576,15 +586,15 @@ ggplot(zomato, aes(x=Average.Cost.for.two.Std)) +
 
 \hfill\break
 
-\newpage
+
 
 `r fig_nums("cost.density", display = "cite")` gives a general idea of the average cost for all restaurants included in the dataset. Evidently, the distribution has normal-like qualities with respect to its bell-shaped curve. There is, however, a clear spike in restaurants which may be considered to have a very expensive average cost. From `r fig_nums("cost-rating", display = "cite")`, it is clear that all rating levels have a similar distribution to `r fig_nums("cost.density", display = "cite")`, however the spike in expensive average meal cost can be seen to become more profound as rating goes up towards excellent. This would suggest that high rated restaurants are more likely to be more expensive on average.
 
-Next, the binary variable describing whether or not a restaurant had the option to book a table was considered on it own and according to restaurant rating.
+Next, the binary variable describing whether or not a restaurant had the option to book a table was considered on its own and according to restaurant rating.
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=4}
 ggplot(zomato,aes(x=Has.Table.booking))+
-  geom_bar(fill=c_palette[4])+
+  geom_bar(fill=c_palette[4], width = 0.5)+
   theme_minimal()+labs(title="Count of Table Booking Status",
                        x="Table Booking",
                        y="Count")
@@ -593,7 +603,7 @@ ggplot(zomato,aes(x=Has.Table.booking))+
 
 \hfill\break
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=4}
 table_rate <- table(zomato$Has.Table.booking,zomato$Rating.text, dnn = c("Table Booking","Rating"))
 prop.table_rate<-data.frame(prop.table(table_rate,1))
 colnames(prop.table_rate) <- c("Table Booking","Rating","Proportion")
@@ -606,17 +616,19 @@ p1+geom_bar(stat="identity",position="dodge")+
 ```
 `r fig_nums("booking-rating")`
 
-\hfill\break
 
-\newpage
 
-`r fig_nums("booking", display = "cite")` shows that overall, there are much more restaurants which do not offer table booking in the present sample than those that do. `r fig_nums("booking-rating", display = "cite")` bypasses this issues by examining the relative proportions of rating within each level. Here, the option of booking a table can be seen to have some effect on the rating of a restaurant, with restaurants which do offer table booking having higher propotions of good and very good ratings.
+
+
+`r fig_nums("booking", display = "cite")` shows that overall, there are much more restaurants which do not offer table booking in the present sample than those that do. `r fig_nums("booking-rating", display = "cite")` bypasses this issue by examining the relative proportions of rating within each level. Here, the option of booking a table can be seen to have some effect on the rating of a restaurant, with restaurants which do offer table booking having higher proportions of good and very good ratings.
 
 Similar visualisations were used to compare the effect of having online delivery with regard to ratings, as shown in `r fig_nums("delivery", display = "cite")` and `r fig_nums("delivery-rating", display = "cite")`.
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+\hfill\break
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=2.5}
 ggplot(zomato,aes(x=Has.Online.delivery))+
-  geom_bar(fill=c_palette[4])+
+  geom_bar(fill=c_palette[4], width = 0.5)+
   theme_minimal()+labs(title="Count of Online Delivery Status",
                        x="Online Delivery",
                        y="Count")
@@ -625,7 +637,7 @@ ggplot(zomato,aes(x=Has.Online.delivery))+
 
 \hfill\break
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=3.5}
 del_rate <- table(zomato$Has.Online.delivery,zomato$Rating.text, dnn = c("Online Delivery","Rating"))
 prop.del_rate<-data.frame(prop.table(del_rate,1))
 colnames(prop.del_rate) <- c("Online Delivery","Rating","Proportion")
@@ -638,7 +650,7 @@ p2+geom_bar(stat="identity",position="dodge")+
 ```
 `r fig_nums("delivery-rating")`
 
-\hfill\break
+
 
 \newpage
 
@@ -657,7 +669,7 @@ ggplot(data = zomato, aes(x = log(Votes+1))) +
 
 \hfill\break
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=7}
 ggplot(zomato, aes(x=log(Votes+1))) +   
   geom_histogram(aes(y=..density..)) + 
   geom_density(aes(y=..density..),fill=c_palette[4],alpha=.4)+
@@ -670,11 +682,13 @@ ggplot(zomato, aes(x=log(Votes+1))) +
 
 \hfill\break
 
+
+
+`r fig_nums("logvotes", display = "cite")` demonstrates a clear right skew, suggesting that only a few restaurants received a large amount of votes. A trend can be observed within `r fig_nums("logvotes-rating", display = "cite")`, wherein higher ratings appear to be associated with more votes. This trend is disrupted however for restaurants which receive an average rating, which seem to have fewer votes than poor-rated restaurants on average. This may be due to customers being more likely to convey an underwhelming experience at a poor-rated restaurant than a mediocre experience at an average-rated restaurant.
+
 \newpage
 
-`r fig_nums("logvotes", display = "cite")` demonstrates a clear right skew, suggesting that only a few restaurants received a large amount of votes. A trend can be observed within `r fig_nums("logvotes-rating", display = "cite")`, wherein higher ratings appear to be associated with more votes. This trend is disrupted however for restaurants which receive an average rating, which seem to have fewer votes that poor-rated resturants on average. This may be due to customers being more likely to convey an underwhelming experience at a poor-rated restaurant than a mediocre experiences at an average-rated restaurant.
-
-The continent the restuarant was located in was then considered. `r fig_nums("map", display = "cite")` below depicts a world map of the location of all restaurants within the dataset. `r fig_nums("continent-rating", display = "cite")` then considers the proportional distribution of ratings across the continents.
+The continent the restaurant was located in was then considered. `r fig_nums("map", display = "cite")` below depicts a world map of the location of all restaurants within the dataset. `r fig_nums("continent-rating", display = "cite")` then considers the proportional distribution of ratings across the continents.
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 WorldData <- map_data('world')
@@ -696,7 +710,7 @@ p
 ```
 `r fig_nums("map")`
 
-\hfill\break
+
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 cont_rate <- table(zomato$continent,zomato$Rating.text, dnn = c("Continent","Rating"))
@@ -713,15 +727,15 @@ p3+geom_bar(stat="identity",position="dodge")+
 
 \hfill\break
 
-\newpage
+
 
 The map provides insight into the locations of the restaurants around the world. Clearly, most of the restaurants in this dataset are based in the USA, India and Australia.
 
 Inspection of `r fig_nums("continent-rating", display = "cite")` highlights that despite being overrepresented in the data, Asian restaurants have relatively low proportions of very good and excellent rated restaurants in comparison to other continents, but have a very high proportion of average restaurants. North America appears to have a relatively high proportion of good-rated restaurants and Oceania has the highest proportion of very good-rated restaurants.
 
-The counts of the different restaurant cuisines were then visualised in `r fig_nums("cuisine", display = "cite")`. `r fig_nums("cuisine-rating", display = "cite")` considers the cuisine type with respect to rating, but here, the continous aggregate rating variable was used over the discrete version for simplicity and interpretability. 
+The counts of the different restaurant cuisines were then visualised in `r fig_nums("cuisine", display = "cite")`. `r fig_nums("cuisine-rating", display = "cite")` considers the cuisine type with respect to rating, but here, the continuous aggregate rating variable was used over the discrete version for simplicity and interpretability. 
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=7}
 ggplot(data=zomato,aes(x=cuisine))+
   geom_bar(fill=c_palette[4])+theme_minimal()+
   labs(title="Count of Restaurant Cuisine",
@@ -733,7 +747,7 @@ ggplot(data=zomato,aes(x=cuisine))+
 
 \hfill\break
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=7}
 ggplot(data = zomato, aes(y = Aggregate.rating, x = "")) +
   geom_boxplot(fill = c_palette[4]) + facet_wrap(~cuisine, ncol = 6) +
   theme_minimal() + labs(title = "Aggregate Restaurant Rating by Cuisine",
@@ -744,15 +758,14 @@ ggplot(data = zomato, aes(y = Aggregate.rating, x = "")) +
 
 \hfill\break
 
-\newpage
 
-From `r fig_nums("cuisine", display = "cite")`, it is clear that the restaurants included in this sample mostly belong to either Indian or Asian cuisines. `r fig_nums("cuisine-rating", display = "cite")` highlights that almost all cuisines are centered around an aggregate rating of 3 to 4, which would equate to ratings of good and very good, respectively. Furthermore, most cuisine types appear to have very little variablity, however others, such as pizza and Asian cuisines have larger interquartile ranges. This suggests higher variability in the aggregate ratings of these kinds of restaurants.
+From `r fig_nums("cuisine", display = "cite")`, it is clear that the restaurants included in this sample mostly belong to either Indian or Asian cuisines. `r fig_nums("cuisine-rating", display = "cite")` highlights that almost all cuisines are centred around an aggregate rating of 3 to 4, which would equate to ratings of good and very good, respectively. Furthermore, most cuisine types appear to have very little variability, however others, such as pizza and Asian cuisines have larger interquartile ranges. This suggests higher variability in the aggregate ratings of these kinds of restaurants.
 
 \newpage
 
 ## Multivariate
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=6.5}
 ggplot(data=zomato, aes(x=log(Votes+1), y=Average.Cost.for.two.Std)) +
   geom_point(aes(colour=continent),alpha=.25) +
   facet_wrap(~Rating.text)+
@@ -766,9 +779,9 @@ ggplot(data=zomato, aes(x=log(Votes+1), y=Average.Cost.for.two.Std)) +
 
 \hfill\break
 
-`r fig_nums("cost-votes-continent", display = "cite")` serves to highlight several interesting features within the sample. Foremost, the imbalance of data across the continents as well as rating levels is very clear. The abundance of yellow again suggests that most of the restaurants are from Asia, while the density of points also shows that most of the restaurants received an average or good rating. Furthermore, the disperson of points in all facets demonstrates that there is no apparent relationship between the cost of a meal and the amount of votes a restaurant receives. It also seems that Asian restaurants are overrepresented in the poor, average and good levels, while there is a more even distribution of the other continents across the other rating levels. This is besides for the excellent rating, where the proportion of Asian restaurants is relatively low.
+`r fig_nums("cost-votes-continent", display = "cite")` serves to highlight several interesting features within the sample. Foremost, the imbalance of data across the continents as well as rating levels is very clear. The abundance of yellow again suggests that most of the restaurants are from Asia, while the density of points also shows that most of the restaurants received an average or good rating. Furthermore, the dispersion of points in all facets demonstrates that there is no apparent relationship between the cost of a meal and the amount of votes a restaurant receives. It also seems that Asian restaurants are overrepresented in the poor, average and good levels, while there is a more even distribution of the other continents across the other rating levels. On the other hand, for the excellent rating, the proportion of Asian restaurants is relatively low.
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=6.5}
 ggplot(zomato,aes(x=log(Votes+1),fill=Has.Table.booking))+
   geom_density(alpha=0.5)+facet_grid(continent~Rating.text)+
   theme_minimal()+
@@ -781,9 +794,9 @@ ggplot(zomato,aes(x=log(Votes+1),fill=Has.Table.booking))+
 
 \hfill\break
 
-`r fig_nums("votes-booking-continent", display = "cite")` examines how the number of votes a restaurant receives is influenced by its rating, continent and whether table booking is available. There is clearly some issues with data sparsity evidenced by the empty facets. The imbalance of the table booking variable can also be seen with restaurants in Asia being the only ones which consistently have table bookings avaialbe for each rating level. Based on this, as well as the other facets which allow for comparison for the two table booking levels, it can be seen that typically the mode of votes is higher for restaurants which offer table booking compared to those which do not, regardless of rating. This assertion should not be generalised outside of Asia however, due to the lack of data.
+`r fig_nums("votes-booking-continent", display = "cite")` examines how the number of votes a restaurant receives is influenced by its rating, continent and whether table booking is available. There are clearly some issues with data sparsity evidenced by the empty facets. The imbalance of the table booking variable can also be seen with restaurants in Asia being the only ones which consistently have table bookings available for each rating level. Based on this, as well as the other facets which allow for comparison for the two table booking levels, it can be seen that typically the mode of votes is higher for restaurants which offer table booking compared to those which do not, regardless of rating. This assertion should not be generalised outside of Asia however, due to the lack of data.
 
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
+```{r, warning=FALSE, message=FALSE, echo=FALSE, fig.height=6.5}
 ggplot(zomato,aes(x=continent,y=Average.Cost.for.two.Std))+
   geom_boxplot(aes(fill=Rating.text))+theme_minimal()+
   stat_summary(fun.y = mean, aes(shape="Continent\nMean"), colour = "darkred", geom="point",size=4) +
@@ -795,17 +808,18 @@ ggplot(zomato,aes(x=continent,y=Average.Cost.for.two.Std))+
 ```
 `r fig_nums("cost-continent-rating")`
 
+\hfill\break
+
 `r fig_nums("cost-continent-rating", display = "cite")` compares standardised average meal cost by rating and continent. The figure highlights a number of interesting features, including that there is a large amount of variation in cost when both rating and continent are considered. Very good rated restaurants appear to be the only ones which retain similar medians and variation for all continents, except for those in Asia which can be seen to be more variable and expensive. A slight trend can be seen across the continents, with cost increasing with rating type. Oceania sharply contradicts this trend however, with poorly rated restaurants being the most expensive within the continent. Finally, comparison of the mean cost reveals there is almost no difference across the continents.
 
-\hfill\break
 
 \newpage
 
 # Summary
 
-Ultimately, this phase was concerned with preparing and exploring the Zomato restaurant data in order to ensure the most accurate and informative modeling in the next phase. Of the original 21 variables, all those which were deemed irrelevant with regards to the upcoming modeling phase were removed. This included variables such as restaurant name, ID, address, etc. Furthermore, it was found that some variables could be further improved and so were either transformed or new variables were created entirely. This included relevelling the cuisine variable, creating the new continent variable based off of country, standardising average meal cost according to currency and log transforming the number of votes each restaurant received. Not all original variables were removed however, as these will still be employed in the modeling phase to assess their relevance in predicting the response variable. Finally, the "Not stated" level of the response variabe was dropped, along with all associted observations, as it would not be logical to try and predict this level. This resulted in the response variable having five distinct ordinal levels. 
+\begin{flushleft}Ultimately, this phase was concerned with preparing and exploring the Zomato restaurant data in order to ensure the most accurate and informative modelling in the next phase. Of the original 21 variables, all those which were deemed irrelevant with regards to the upcoming modelling phase were removed. This included variables such as restaurant name, ID, address, etc. Furthermore, it was found that some variables could be further improved and so were either transformed or new variables were created entirely. This included relevelling the cuisine variable, creating the new continent variable based off of country, standardising average meal cost according to currency and log transforming the number of votes each restaurant received. Not all original variables were removed however, as these will still be employed in the modelling phase to assess their relevance in predicting the response variable. Finally, the "Not rated" level of the response variable was dropped, along with all associated observations, as it would not be logical to try and predict this level. This resulted in the response variable having five distinct ordinal levels.\end{flushleft}
 
-The features were then assessed visually to confirm their relevance for modeling. Interesting univariate insights included how average-rated restaurants made up the majority of the data and that most restaurants included in the data were from Asia and had Asian or Indian cuisines. In all bivariate visualisations, some apparent differences were observed across the levels of the response variable with regards to the other variable being assessed. For example, it was shown that Asia had a very large proportion of average-rated restaurants in comparison to other continents, the log of votes increased across accending rating levels (expect for average-rated restaurants) and that restaurants which offered table booking were more likely be rated good or very good compared to those which did not offer it. The multivariate visualisations served to further explore the interaction between many variables simultaneously, which proved relatively strenuous on the data, with clear evidence of data sparsity. This ultimately suggests that there is not a comprehensive distribution of data across the domains of all variables. Despite this, given that the exploration of the data overarchingly demonstrated clear differences across the response levels based on the other variables, the upcoming modeling phase should prove fruitful.
+\begin{flushleft}The features were then assessed visually to confirm their relevance for modelling. Interesting univariate insights included how average-rated restaurants made up the majority of the data and that most restaurants included in the data were from Asia and had Asian or Indian cuisines. In all bivariate visualisations, some apparent differences were observed across the levels of the response variable with regards to the other variable being assessed. For example, it was shown that Asia had a very large proportion of average-rated restaurants in comparison to other continents, the log of votes increased across ascending rating levels (expect for average-rated restaurants) and that restaurants which offered table booking were more likely be rated good or very good compared to those which did not offer it. The multivariate visualisations served to further explore the interaction between many variables simultaneously, which proved relatively strenuous on the data, with clear evidence of data sparsity. This ultimately suggests that there is not a comprehensive distribution of data across the domains of all variables. Despite this, given that the exploration of the data overarchingly demonstrated clear differences across the response levels based on the other variables, the upcoming modelling phase should prove fruitful.\end{flushleft}
 
 \newpage
 
