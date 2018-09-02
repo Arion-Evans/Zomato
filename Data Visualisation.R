@@ -124,7 +124,7 @@ zomato = zomato[,c("Restaurant.ID","Restaurant.Name","Address",
 Europe <- c("United Kingdom")
 North_America <- c("United States","Canada")
 Asia <- c("India","Indonesia","Singapore","Sri Lanka","UAE","Phillipines","Qatar")
-Oceania <- c("Auatralia", "New Zealand")
+Oceania <- c("Australia", "New Zealand")
 ROW <- c("Brazil","South Africa", "Turkey")
 
 zomato$continent <- case_when(
@@ -137,6 +137,7 @@ zomato$continent <- case_when(
 
 zomato$continent<-as.factor(zomato$continent)
 
+levels(zomato$Country)
 
 #returning cuisine to a single column of factors (for visualisation)
 set.seed(123)
@@ -184,7 +185,8 @@ ditch_the_axes <- theme(
   panel.border = element_blank(),
   panel.grid = element_blank(),
   axis.title = element_blank(),
-  panel.background = element_blank()
+  panel.background = element_blank(),
+  legend.title = element_blank()
 )
 
 
@@ -241,6 +243,7 @@ ggplot(data = prop, aes(x = factor(1), y = Freq, fill = Var1)) +
 
 ###### BIVARIATE #############
 
+
 # cost vs country
 ggplot(data = zomato, aes(y = Average.Cost.for.two.Std, x = "")) +
   geom_boxplot(fill = "lightpink3") + facet_wrap(~Country, scales = "free", ncol = 5) +
@@ -248,7 +251,27 @@ ggplot(data = zomato, aes(y = Average.Cost.for.two.Std, x = "")) +
                          y = "Average cost for two (standardised)",
                          x = "Country")
 
+#rating vs continent
+ggplot(zomato, aes(continent))+
+  geom_bar(fill="lightpink3")+
+  theme_minimal()+labs(title="Distribution of Ratings Across Continent",
+                       x="Contient",
+                       y="Count")
+#Clearly, most restautants included within the dataset are from Asia.
 
+cont_rate <- table(zomato$continent,zomato$Rating.text, dnn = c("Continent","Rating"))
+prop.cont_rate<-data.frame(prop.table(cont_rate,1))
+colnames(prop.cont_rate) <- c("Continent","Rating","Proportion")
+
+p5<-ggplot(prop.cont_rate,aes(x=Continent,y=Proportion,fill=Rating))
+p5+geom_bar(stat="identity",position="dodge")+
+  labs(title="Proportions of Rating within Continent") +
+  theme(axis.text.x = element_text(angle = 35))
+#inspection of the relative proportions of ratings within each contients highlights
+#that despite being overrepresented in the data, asian restaurants have relatively low
+# proportions of Very Good and Excellent rated restaurants in comparison to other continents.
+# Asia has the highest proprotion of Not rated restaurants, while Oceana has almost exclusively
+# Very Good or Excellent rated restaurants.
 
 # rating vs table booking
 ggplot(data = zomato, aes(y = Aggregate.rating, x = Has.Table.booking)) +
@@ -286,6 +309,18 @@ ggplot(data = zomato, aes(y = Aggregate.rating, x = "")) +
                          y = "Aggregate Rating",
                          x = "Cuisine")
 
+#cuisine by rating (text)
+cuis_rate <- table(zomato$cuisine,zomato$Rating.text, dnn = c("Cuisine","Rating"))
+prop.cuis_rate<-data.frame(prop.table(cuis_rate,1))
+colnames(prop.cuis_rate) <- c("Cuisine","Rating","Proportion")
+
+p5<-ggplot(prop.cuis_rate,aes(x=Cuisine,y=Proportion,fill=Rating))
+p5+geom_bar(stat="identity",position="dodge")+
+  labs(title="Proportions of Rating within Cuisines") +
+  theme(axis.text.x = element_text(angle = 45))
+
+
+
 # cost vs rating
 ggplot(data = zomato, aes(x = Rating.text, y = Average.Cost.for.two.Std)) +
   geom_boxplot(fill = "lightpink3") + theme_minimal() +
@@ -295,3 +330,37 @@ ggplot(data = zomato, aes(x = Rating.text, y = Average.Cost.for.two.Std)) +
 
 
 
+##### MULTIVARIATE #####
+ggplot(data=zomato, aes(x=log(Votes+1), y=Average.Cost.for.two.Std)) +
+  geom_point(aes(colour=continent), alpha= 0.3) +
+  facet_wrap(~Rating.text)+
+  labs(x="Votes",
+       y="Average Cost for Two (Standardised)")
+
+zomato$Cuisine_Range<-factor(zomato$Cuisine_Range)
+View(zomato)
+
+cuis_rate <- table(zomato$Cuisine_Range,zomato$Rating.text, dnn = c("Cuisine","Rating"))
+prop.cuis_rate<-data.frame(prop.table(cuis_rate,1))
+colnames(prop.cuis_rate) <- c("Cuisine","Rating","Proportion")
+
+p5<-ggplot(prop.cuis_rate,aes(x=Cuisine,y=Proportion,fill=Rating))
+p5+geom_bar(stat="identity",position="dodge")+
+  labs(title="Proportions of Rating within Cuisines") +
+  theme(axis.text.x = element_text(angle = 45))
+
+library(ggplot2)
+
+zomato<-zomato_filt
+
+prop = table(zomato$Rating.text) %>% prop.table() %>% as.data.frame()
+prop$Freq = prop$Freq*100
+
+c_palette<-c("#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3", "#a6d854", "#ffd92f")
+
+ggplot(data = prop, aes(x = factor(1), y = Freq, fill = Var1)) +
+  geom_bar(stat="identity",width = 1) + coord_polar(theta = "y") +
+  ditch_the_axes +
+  labs(fill = "Rating", title = "Restaurant Rating Percentage Distribution") +
+  geom_text(aes(label = paste(round(Freq,2),"%")), position = position_stack(vjust = 0.5)) +
+  scale_fill_manual(values=c_palette)
