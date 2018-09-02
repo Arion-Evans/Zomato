@@ -166,6 +166,16 @@ zomato$cuisine<-revalue(zomato$cuisine, c("1"=names(zomato[,11]),
 
 zomato$Cuisine_Range = rowSums(zomato[,11:28])
 
+# aggregate cuisine range
+zomato$Cuisine_Range = as.factor(zomato$Cuisine_Range)
+levels(zomato$Cuisine_Range)[levels(zomato$Cuisine_Range) %in% c("5","6","7","8")] = ">4"
+
+
+# filter data
+zomato = zomato[Rating.text != "Not rated"] %>% droplevels()
+
+
+
 #removing binary columns
 zomato = zomato[,c("Seafood","Asian","European",
                    "Cafe","Fast Food","Bakery","Pizza","Desserts","Other",
@@ -303,3 +313,6 @@ p3+geom_bar(stat="identity",position="dodge")+
   labs(title="Figure 11. Proportions of Rating within Continent") +
   theme_minimal()+
   scale_fill_manual(values=c_palette)
+
+ggplot(data = zomato) +
+  geom_boxplot(aes(x = zomato$Cuisine_Range, y = zomato$Aggregate.rating))
