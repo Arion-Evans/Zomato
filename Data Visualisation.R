@@ -5,7 +5,7 @@ library(plyr)
 library(ggplot2)
 library(broom)
 library(vcd)
-
+library(plotly)
 
 
 ########## Data prep #####################################
@@ -241,11 +241,12 @@ zomato$Rating.text <- factor(zomato$Rating.text, levels = c("Not rated", "Poor",
 prop = table(zomato$Rating.text) %>% prop.table() %>% as.data.frame()
 prop$Freq = prop$Freq*100
 
-ggplot(data = prop, aes(x = factor(1), y = Freq, fill = Var1)) +
-  geom_bar(stat="identity",width = 1) + coord_polar(theta = "y") +
-  ditch_the_axes +
-  labs(fill = "Rating", title = "Restaurant rating distribution") +
-  geom_text(aes(label = paste(round(Freq,2),"%")), position = position_stack(vjust = 0.5)) 
+ggplot(data = prop, aes(x = Var1, y = Freq)) +
+  geom_bar(stat="identity", fill = c_palette[4]) +
+  labs(title = "Restaurant rating distribution",
+       y = "Count", x = "Rating") +
+  geom_text(aes(label = paste(round(Freq,2),"%")), position = position_stack(vjust = 0.5)) +
+  theme_minimal()
 
 
 
@@ -316,3 +317,6 @@ p3+geom_bar(stat="identity",position="dodge")+
 
 ggplot(data = zomato) +
   geom_boxplot(aes(x = zomato$Cuisine_Range, y = zomato$Aggregate.rating))
+
+
+
