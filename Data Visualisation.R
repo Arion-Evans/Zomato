@@ -5,7 +5,7 @@ library(plyr)
 library(ggplot2)
 library(broom)
 library(vcd)
-
+library(plotly)
 
 
 ########## Data prep #####################################
@@ -167,6 +167,16 @@ zomato$cuisine<-revalue(zomato$cuisine, c("1"=names(zomato[,11]),
 
 zomato$Cuisine_Range = rowSums(zomato[,11:28])
 
+# aggregate cuisine range
+zomato$Cuisine_Range = as.factor(zomato$Cuisine_Range)
+levels(zomato$Cuisine_Range)[levels(zomato$Cuisine_Range) %in% c("5","6","7","8")] = ">4"
+
+
+# filter data
+zomato = zomato[Rating.text != "Not rated"] %>% droplevels()
+
+
+
 #removing binary columns
 zomato = zomato[,c("Seafood","Asian","European",
                    "Cafe","Fast Food","Bakery","Pizza","Desserts","Other",
@@ -204,21 +214,21 @@ ggplot(data = zomato, aes(x = cuisine)) +
 
 WorldData <- map_data('world')
 WorldData <- WorldData %>% filter(region != "Antarctica")
-WorldData <- tidy(WorldData)
+
 
 
 p <- ggplot()
 p <- p + geom_map(data=WorldData, map=WorldData,
                   aes(x=long, y=lat, group=group, map_id=region),
                   fill="antiquewhite", colour="#7f7f7f", size=0.5) +
-  geom_point(data = zomato, aes(x = Longitude, y = Latitude),colour = "red4") +
+  geom_point(data = zomato, aes(x = Longitude, y = Latitude),colour = "red4", size = 0.5) +
   coord_map("rectangular", lat0=0, xlim=c(-180,180), ylim=c(-60, 90)) +
   scale_y_continuous(breaks=c()) +
   scale_x_continuous(breaks=c()) +
   labs(fill="legend", title="Restaurant locations", x="", y="") +
   theme_bw() +
   theme(panel.border = element_blank())
-
+p
 # Rating (numeric)
 ggplot(data = zomato, aes(x = Aggregate.rating)) +
   geom_bar(fill = "lightpink3") +
@@ -233,11 +243,12 @@ zomato$Rating.text <- factor(zomato$Rating.text, levels = c("Not rated", "Poor",
 prop = table(zomato$Rating.text) %>% prop.table() %>% as.data.frame()
 prop$Freq = prop$Freq*100
 
-ggplot(data = prop, aes(x = factor(1), y = Freq, fill = Var1)) +
-  geom_bar(stat="identity",width = 1) + coord_polar(theta = "y") +
-  ditch_the_axes +
-  labs(fill = "Rating", title = "Restaurant rating distribution") +
-  geom_text(aes(label = paste(round(Freq,2),"%")), position = position_stack(vjust = 0.5)) 
+ggplot(data = prop, aes(x = Var1, y = Freq)) +
+  geom_bar(stat="identity", fill = c_palette[4]) +
+  labs(title = "Restaurant rating distribution",
+       y = "Count", x = "Rating") +
+  geom_text(aes(label = paste(round(Freq,2),"%")), position = position_stack(vjust = 0.5)) +
+  theme_minimal()
 
 
 
@@ -327,6 +338,20 @@ ggplot(data = zomato, aes(x = Rating.text, y = Average.Cost.for.two.Std)) +
   labs(x = "Rating",
        title = "Restaurant rating by cost",
        y = "Average cost for two people (standardised)")
+
+
+cont_rate <- table(zomato$continent,zomato$Rating.text, dnn = c("Continent","Rating"))
+prop.cont_rate<-data.frame(prop.table(cont_rate,1))
+colnames(prop.cont_rate) <- c("Continent","Rating","Proportion")
+
+p3<-ggplot(prop.cont_rate,aes(x=Continent,y=Proportion,fill=Rating))
+p3+geom_bar(stat="identity",position="dodge")+
+  labs(title="Figure 11. Proportions of Rating within Continent") +
+  theme_minimal()+
+  scale_fill_manual(values=c_palette)
+
+ggplot(data = zomato) +
+  geom_boxplot(aes(x = zomato$Cuisine_Range, y = zomato$Aggregate.rating))
 
 
 

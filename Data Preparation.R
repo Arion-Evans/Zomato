@@ -1,7 +1,7 @@
 library(mlr)
 library(data.table)
-library(dplyr)
 library(plyr)
+library(dplyr)
 
 zomato = read.csv("zomato.csv")
 zomato = as.data.table(zomato)
@@ -144,3 +144,12 @@ setDT(zomato)[, c(levels(zomato$continent), "continent") :=
 #creating new variable for range of cuisine
 
 zomato$Cuisine_Range = rowSums(zomato[,10:27])
+
+# aggregate cuisine range
+zomato$Cuisine_Range = as.factor(zomato$Cuisine_Range)
+levels(zomato$Cuisine_Range)[levels(zomato$Cuisine_Range) %in% c("5","6","7","8")] = ">4"
+
+
+# filter data
+zomato = zomato[Rating.text != "Not rated"] %>% droplevels()
+
