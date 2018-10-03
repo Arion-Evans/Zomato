@@ -325,4 +325,7 @@ zomato = zomato[,c("Seafood","Asian","European",
 #Unnecessary columns
 zomato = zomato[,c("Longitude", "Latitude", "Aggregate.rating", "Price.range", "Average.Cost.for.two") := NULL]
 
-#saveRDS(zomato,file="zomato_phase2.rds")
+# filter not rated
+zomato = zomato[Rating.text != "Not rated"] %>% droplevels()
+
+saveRDS(zomato,file="zomato_phase2.rds")
