@@ -1,0 +1,150 @@
+---
+title: "Predicting Zomato restaurant ratings with logistic regression"
+author: "Arion Barzoucas-Evans (s3650046) & Joshua Grosman (s3494389)"
+date: "06/10/2018"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+    fig_caption: yes
+  word_document:
+    toc: no
+    toc_depth: '3'
+  html_document:
+    df_print: paged
+    toc: no
+    toc_depth: '3'
+header-includes: \usepackage{float}
+linkcolor: blue
+documentclass: article
+subtitle: MATH 1298 Analysis of Categorical Data Project Phase II
+bibliography: references.bib
+---
+
+
+\newpage
+
+\tableofcontents
+
+\newpage
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+# CAPTIONS
+library(captioner)
+fig_nums <- captioner(prefix = "Figure")
+tab_nums <- captioner(prefix = "Table")
+
+tab_nums(name = "data.preview")
+tab_nums(name = "model.comp.bic")
+
+fig_nums(name = "search.1.bic.plot", caption = "Fitted multinomial regression models and their BIC values.")
+
+
+```
+
+# Introduction \label{sec1}
+
+During phase I of this project, exploratory data analysis was performed on data pertaining to 7,403 restaurants listed on Zomato (a restaurant search and discovery service founded in 2008). This included data pre-processing, creation of new variables, and visual representation of the data. According to this, the number of votes and whether a restaurant offers table bookings or not were found to be variables of particular interest. This phase of the project will focus on fitting a logistic regression model to the Zomato data and examining the effects of the different variables included in the model on a restaurant's rating.
+
+
+
+\newpage
+
+# Methodology
+
+Following some final minor data preparation, a multinomial regression model will be fitted to the Zomato data. The response variable for the model will be `Rating.text` having the following levels: "Poor", "Average", "Good", "Very Good", and "Excellent". There are a total of 7 explanatory independent variables in the dataset out of which only the most significant variables will be included in the model. This will be accomplished by performing an exhaustive search of all possible regression models and selecting the model with the lowest BIC value. The effect of the chosen predictors will then be examined. The following `R` packages will be utilised to accomplice these tasks:
+
+```{r, message = FALSE, warning=FALSE}
+library(nnet)
+library(car)
+#library(MASS)
+library(glmulti)
+library(knitr)
+library(captioner)
+```
+
+
+\newpage
+
+# Data Preparation
+
+`r tab_nums("data.preview", display = "cite")` displays the first 10 rows of the Zomato data. The levels for the `Rating.text` and `continent` were reordered so that "Poor" and "Rest of World" are the base levels for each variable respectively. This way 4 logistic regression models will be built, each comparing one level of the `Rating.text` variable to its base level ("Poor").
+
+```{r}
+zomato<-readRDS("zomato_phase2.rds")
+
+kable(head(zomato, n = 10),
+      caption = "First 10 rows of the Zomato dataset.")
+```
+
+```{r}
+
+
+#Reordering factor variables to specify bases
+
+#rating text (base=poor)
+zomato$Rating.text<-factor(zomato$Rating.text, 
+                           levels = c("Poor", "Average", "Good","Very Good", "Excellent")) 
+
+#continent (base=rest of world)
+zomato$continent<-factor(zomato$continent, 
+                           levels = c("Rest of World", "Europe", "Asia","North America", "Oceania")) 
+
+```
+
+\newpage
+
+# Feature Selection
+
+```{r, eval=FALSE}
+set.seed(123)
+search.1way.bic <- glmulti(y = Rating.text ~ ., 
+                         data = zomato, 
+                         fitfunction = "glm", 
+                         level = 1, 
+                         method = "h", 
+                         marginality = TRUE,
+                         crit = "bic", 
+                         family = binomial(link = "logit"))
+
+
+aa <- weightable(search.1way.bic)
+cbind(model = aa[1:5,1], round(aa[1:5,2:3], digits = 3))
+
+plot(search.1way.bic, type = "p")
+```
+
+```{r, echo=FALSE}
+search.1way.bic = readRDS("Feature Selection/search.1way.bic.rds")
+aa <- weightable(search.1way.bic)
+model.comp.bic = cbind(model = aa[1:5,1], round(aa[1:5,2:3], digits = 3))
+kable(model.comp.bic,
+      caption = "Top 5 multinomial regression models according to BIC.")
+```
+
+```{r, echo=FALSE}
+plot(search.1way.bic, type = "p")
+```
+`r fig_nums("search.1.bic.plot")`
+
+
+
+
+\newpage
+
+
+# Summary
+
+
+\newpage
+
+# References
+
+[Kaggle](https://www.kaggle.com/shrutimehta/zomato-restaurants-data)
+
+---
+nocite: | 
+  @mlr, @data.table, @dplyr, @plyr, @ggplot2, @vcd, @knitr, @kableExtra,
+...
+
+
