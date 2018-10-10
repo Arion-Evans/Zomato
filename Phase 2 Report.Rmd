@@ -52,7 +52,7 @@ During phase I of this project, exploratory data analysis was performed on data 
 
 # Methodology
 
-Following some final minor data preparation, a multinomial regression model will be fitted to the Zomato data. The response variable for the model will be `Rating.text` having the following levels: "Poor", "Average", "Good", "Very Good", and "Excellent". There are a total of 7 explanatory independent variables in the dataset out of which only the most significant variables will be included in the model. This will be accomplished by performing an exhaustive search of all possible regression models and selecting the model with the lowest BIC value. The effect of the chosen predictors will then be examined. The following `R` packages will be utilised to accomplice these tasks:
+Following some final minor data preparation, a multinomial regression model will be fitted to the Zomato data. The response variable for the model will be `Rating.text` having the following levels: "Poor", "Average", "Good", "Very Good", and "Excellent". There are a total of 7 explanatory independent variables in the dataset out of which only the most significant variables will be included in the model. This will be accomplished by performing an exhaustive search of all possible regression models and selecting the model with the lowest BIC value. The chosen predictors will then be included into a multinominal logistic regression model. Furthermore, as the response variable is ordinal, a proportional-odds cumulative logitistic model will also be constructed. The effect of the chosen predictors and overall model performance will then be examined and the best model will be identified based primarily on parameter significant and the residual deviance of the models. The following `R` packages will be utilised to accomplice these tasks:
 
 ```{r, message = FALSE, warning=FALSE}
 library(nnet)
@@ -127,10 +127,73 @@ plot(search.1way.bic, type = "p")
 ```
 `r fig_nums("search.1.bic.plot")`
 
-
-
+From this, it is clear that the best model to utilise should only include the `Has.Online.delivery` and `Votes` predictors. This small number of predictors is not surprising given that BIC favours smaller models.
 
 \newpage
+
+# Model Fitting
+
+### Nominal Model
+
+A multinominal logistic regression model was fitting using the variables identified in the previous section.
+
+```{r, eval=FALSE}
+fit.bic.nom<-multinom(formula = Rating.text ~ Has.Online.delivery  + Votes, data=zomato)
+```
+
+```{r, echo=FALSE}
+fit.bic.nom<-readRDS("Models/bic_nom_FULL.rds")
+```
+
+The significance of the predictors was assessed below using an LRT for independence.
+
+```{r}
+Anova(fit.bic.nom)
+```
+
+The predictors are shown to be highly signficiant with p < .001 in both cases.
+
+The coefficients of the 4 regression models are summarised below:
+
+```{r, echo=FALSE}
+summary(fit.bic.nom)
+```
+
+\newpage
+
+### Ordinal Model
+
+```{r,eval=FALSE}
+fit.bic.ord<-polr(formula = Rating.text ~ Has.Online.delivery  + Votes, data=zomato,
+                  method = "logistic")
+```
+
+```{r, echo=FALSE}
+fit.bic.ord<-readRDS("Models/bic_ord_FULL.rds")
+```
+
+Again, an LRT was employed to check the signficance of predictors.
+
+```{r, echo= FALSE}
+Anova(fit.bic.ord)
+```
+
+Both predictors are shown to be highly significant at p < .001. Interestingly, the p-value for `Has.Online.Delivery` is higher in this model than the nominal model assessed previously, however here the value is still very small.
+
+The model summary is depicted below:
+
+```{r}
+summary(fit.bic.ord)
+```
+
+## Model Comparison
+
+Comparison of the nominal and ordinal models specified above suggested that the nominal model was superior. This conclusion is based mostly on the residual deviance of the models. The nominal model had a lower deviance of 14337.18, while the ordinal model's was 16230.23. Furthermore, it was seen that the `Has.Online.Delivery` predictor was slightly more significant within the nominal model compared to the ordinal one. As such, the nominal model was selected as the best model.
+
+\newpage
+
+# Final Model
+
 
 
 # Summary
