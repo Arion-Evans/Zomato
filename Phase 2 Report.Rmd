@@ -194,7 +194,12 @@ Comparison of the nominal and ordinal models specified above suggested that the 
 
 # Final Model
 
+The four logistic regression equations associated with the multinominal model defined previously are stated below:
 
+* logit(Pr(Average)/Pr(Poor)) = 3.999 - 1.211(Has.Online.Delivery) - 0.007(Votes)
+* logit(Pr(Good)/Pr(Poor)) = 2.215 - 1.151(Has.Online.Delivery) - 0.006(Votes)
+* logit(Pr(Very Good)/Pr(Poor)) = 1.296 - 1.870(Has.Online.Delivery) - 0.007(Votes)
+* logit(Pr(Excellent)/Pr(Poor)) = -0.036 - 2.8131(Has.Online.Delivery) - 0.008(Votes)
 
 # Summary
 
