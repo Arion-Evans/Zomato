@@ -218,7 +218,7 @@ Here, it can be seen restaurants with online delivery are .298 as likely than re
 
 # Model Prediction
 
-In order to gain some more insight into the model's performance, a new dataset was constructed and fed into the model. The results are plotted below:
+In order to gain some more insight into how the predictor variables effect the response level probabilities, a new dataset was constructed and fed into the model. The results are plotted below:
 
 ```{r, echo=FALSE}
 #prediction dataframe
