@@ -52,7 +52,7 @@ During phase I of this project, exploratory data analysis was performed on data 
 
 # Methodology
 
-Following some final minor data preparation, a multinomial regression model will be fitted to the Zomato data. The response variable for the model will be `Rating.text` having the following levels: "Poor", "Average", "Good", "Very Good", and "Excellent". There are a total of 7 explanatory independent variables in the dataset out of which only the most significant variables will be included in the model. This will be accomplished by performing an exhaustive search of all possible regression models and selecting the model with the lowest BIC value. The chosen predictors will then be included into a multinominal logistic regression model. Furthermore, as the response variable is ordinal, a proportional-odds cumulative logitistic model will also be constructed. The effect of the chosen predictors and overall model performance will then be examined and the best model will be identified based primarily on parameter significant and the residual deviance of the models. The following `R` packages will be utilised to accomplice these tasks:
+Following some final minor data preparation, a multinomial regression model will be fitted to the Zomato data. Firstly, the data will be split into training and test sets to enable unbaised accuracy assessments. The response variable for the model will be `Rating.text` having the following levels: "Poor", "Average", "Good", "Very Good", and "Excellent". There are a total of 7 explanatory independent variables in the dataset out of which only the most significant variables will be included in the model. This will be accomplished by performing an exhaustive search of all possible regression models and selecting the model with the lowest BIC value. The chosen predictors will then be included into a multinominal logistic regression model. Furthermore, as the response variable is ordinal, a proportional-odds cumulative logitistic model will also be constructed. The effect of the chosen predictors and overall model performance will then be examined and the best model will be identified based primarily on parameter significant and the residual deviance of the models. The test data will then be fed into model the predictions will compared to actual observations. The following `R` packages will be utilised to accomplice these tasks:
 
 ```{r, message = FALSE, warning=FALSE}
 library(nnet)
@@ -70,7 +70,7 @@ library(DescTools)
 
 # Data Preparation
 
-`r tab_nums("data.preview", display = "cite")` displays the first 10 rows of the Zomato data. The levels for the `Rating.text` and `continent` were reordered so that "Poor" and "Rest of World" are the base levels for each variable respectively. This way 4 logistic regression models will be built, each comparing one level of the `Rating.text` variable to its base level ("Poor").
+`r tab_nums("data.preview", display = "cite")` displays the first 10 rows of the Zomato data. The levels for the `Rating.text` and `continent` were reordered so that "Poor" and "Rest of World" are the base levels for each variable respectively. This way 4 logistic regression models will be built, each comparing one level of the `Rating.text` variable to its base level ("Poor"). The data was then split into training and test sets using a 80:20 split via stratified sampling.
 
 ```{r}
 zomato<-readRDS("zomato_phase2.rds")
@@ -92,6 +92,19 @@ zomato$Rating.text<-factor(zomato$Rating.text,
 zomato$continent<-factor(zomato$continent, 
                            levels = c("Rest of World", "Europe", "Asia","North America", "Oceania")) 
 
+zomato$ID = seq(1,nrow(zomato),1) # for splitting dataset
+
+#test/train
+
+set.seed(57364)
+zomato.train = zomato %>% group_by(Rating.text) %>% sample_frac(0.8) # stratified sampling
+zomato.test = zomato[!(zomato$ID %in% zomato.train$ID),]
+
+zomato.train = as.data.table(zomato.train)
+zomato = zomato[,-c("ID")]
+zomato.train = zomato.train[,-c("ID")]
+zomato.test = zomato.test[,-c("ID")]
+
 ```
 
 \newpage
@@ -101,7 +114,7 @@ zomato$continent<-factor(zomato$continent,
 ```{r, eval=FALSE}
 set.seed(123)
 search.1way.bic <- glmulti(y = Rating.text ~ ., 
-                         data = zomato, 
+                         data = zomato.train, 
                          fitfunction = "glm", 
                          level = 1, 
                          method = "h", 
@@ -140,11 +153,11 @@ From this, it is clear that the best model to utilise should only include the `H
 A multinominal logistic regression model was fitting using the variables identified in the previous section.
 
 ```{r, eval=FALSE}
-fit.bic.nom<-multinom(formula = Rating.text ~ Has.Online.delivery  + Votes, data=zomato)
+fit.bic.nom<-multinom(formula = Rating.text ~ Has.Online.delivery  + Votes, data=zomato.train)
 ```
 
 ```{r, echo=FALSE}
-fit.bic.nom<-readRDS("Models/bic_nom_FULL.rds")
+fit.bic.nom<-readRDS("Models/bic_nom_TRAIN.rds")
 ```
 
 The significance of the predictors was assessed below using an LRT for independence.
@@ -166,12 +179,11 @@ summary(fit.bic.nom)
 ### Ordinal Model
 
 ```{r,eval=FALSE}
-fit.bic.ord<-polr(formula = Rating.text ~ Has.Online.delivery  + Votes, data=zomato,
-                  method = "logistic")
+fit.bic.ord<-polr(formula = Rating.text ~ Has.Online.delivery  + Votes, data=zomato.train,  method = "logistic")
 ```
 
 ```{r, echo=FALSE}
-fit.bic.ord<-readRDS("Models/bic_ord_FULL.rds")
+fit.bic.ord<-readRDS("Models/bic_ord_TRAIN.rds")
 ```
 
 Again, an LRT was employed to check the signficance of predictors.
@@ -192,16 +204,18 @@ summary(fit.bic.ord)
 
 Comparison of the nominal and ordinal models specified above suggested that the nominal model was superior. This conclusion is based mostly on the residual deviance of the models. The nominal model had a lower deviance of 14337.18, while the ordinal model's was 16230.23. Furthermore, it was seen that the `Has.Online.Delivery` predictor was slightly more significant within the nominal model compared to the ordinal one. As such, the nominal model was selected as the best model.
 
+
 \newpage
 
 # Final Model
 
 The four logistic regression equations associated with the multinominal model defined previously are stated below:
 
-* log(Pr(Average)/Pr(Poor)) = 3.999 - 1.211(Has.Online.Delivery) - 0.007(Votes)
-* log(Pr(Good)/Pr(Poor)) = 2.215 - 1.151(Has.Online.Delivery) - 0.006(Votes)
-* log(Pr(Very Good)/Pr(Poor)) = 1.296 - 1.870(Has.Online.Delivery) - 0.007(Votes)
-* log(Pr(Excellent)/Pr(Poor)) = -0.036 - 2.8131(Has.Online.Delivery) - 0.008(Votes)
+* log(Pr(Average)/Pr(Poor)) = 4.014 - 1.179(Has.Online.Delivery) - 0.007(Votes)
+* log(Pr(Good)/Pr(Poor)) = 2.263 - 1.120(Has.Online.Delivery) - 0.005(Votes)
+* log(Pr(Very Good)/Pr(Poor)) = 1.345 - 1.768(Has.Online.Delivery) - 0.007(Votes)
+* log(Pr(Excellent)/Pr(Poor)) = 0.039 - 2.766(Has.Online.Delivery) - 0.007(Votes)
+
 
 # Effect of Independant Variables on Prediction Outcomes
 
@@ -212,13 +226,13 @@ fit.e = exp(coef(fit.bic.nom))
 stargazer(fit.bic.nom, type = "text", coef=list(fit.e), p.auto=FALSE)
 ```
 
-Here, it can be seen restaurants with online delivery are .298 as likely than restaurants without online delivery to rated average rather than poor. Furthermore, this trend is shown across all the levels, suggesting that generally, a restaurant with online delivery is more likely to be rated poor than any other level. For the Votes variable, a one unit increase in votes is shown to increase the odds of a restaurant being rated excellent as opposed to poor by 1.008. In fact, an increase in votes essentially translates into a restaurant being rating anything other poor across all levels, except for the Average level.
+Here, it can be seen restaurants with online delivery are .307 as likely than restaurants without online delivery to rated average rather than poor. Furthermore, this trend is shown across all the levels, suggesting that generally, a restaurant with online delivery is more likely to be rated poor than any other level. For the Votes variable, a one unit increase in votes is shown to increase the odds of a restaurant being rated excellent as opposed to poor by 1.007. In fact, an increase in votes essentially translates into a restaurant being more likely to be rated anything other poor across all levels, except for the Average level.
 
 \newpage
 
 # Model Prediction
 
-In order to gain some more insight into how the predictor variables effect the response level probabilities, a new dataset was constructed and fed into the model. The results are plotted below:
+The effect of the predictor variables on the response level probabilities was further explored by feeding a dummy dataset into the model. The associated plot is shown below:
 
 ```{r, echo=FALSE}
 #prediction dataframe
@@ -242,11 +256,12 @@ ggplot(lpp, aes(x = Votes, y = Probability, colour = Has.Online.delivery)) +
 
 #Comparing Prediction Outcomes to Observations
 
-The full dataset was fed into the prediction model to obtain prediction response for the `Rating.text` variable. These results are compared to the actual observations in the plot below:
+The testing dataset was fed into the prediction model to obtain prediction response for the `Rating.text` variable. These results are compared to their associated actual observations in the plot below:
 
 ```{r, echo=FALSE}
-#generating predictions over dataset
-pred<-data.table(predict(fit.bic.nom,newdata = zom.r, type = "class"))
+zom.t<-zomato.test[,c("Rating.text","Has.Online.delivery","Votes")]
+
+pred<-data.table(predict(fit.bic.nom,newdata = zom.t, type = "class"))
 pred[, `:=` (Count = .N), by=V1]
 pred<-data.frame(subset(unique(pred)))
 pred$prop<-pred$Count/sum(pred$Count)
@@ -256,7 +271,7 @@ names(add)<-c("V1","Count","prop")
 pred<-rbind(pred,add)
 
 #actual observations in same format as above
-zom.p<-zom.r$Rating.text
+zom.p<-zom.t$Rating.text
 zom.p<-data.table(zom.p)[, `:=` (Count = .N), by=zom.p]
 zom.p<-data.frame(subset(unique(zom.p)))
 zom.p$prop<-zom.p$Count/sum(zom.p$Count)
