@@ -61,6 +61,8 @@ library(car)
 library(glmulti)
 library(knitr)
 library(captioner)
+library(stargazer)
+library(DescTools)
 ```
 
 
@@ -196,10 +198,90 @@ Comparison of the nominal and ordinal models specified above suggested that the 
 
 The four logistic regression equations associated with the multinominal model defined previously are stated below:
 
-* logit(Pr(Average)/Pr(Poor)) = 3.999 - 1.211(Has.Online.Delivery) - 0.007(Votes)
-* logit(Pr(Good)/Pr(Poor)) = 2.215 - 1.151(Has.Online.Delivery) - 0.006(Votes)
-* logit(Pr(Very Good)/Pr(Poor)) = 1.296 - 1.870(Has.Online.Delivery) - 0.007(Votes)
-* logit(Pr(Excellent)/Pr(Poor)) = -0.036 - 2.8131(Has.Online.Delivery) - 0.008(Votes)
+* log(Pr(Average)/Pr(Poor)) = 3.999 - 1.211(Has.Online.Delivery) - 0.007(Votes)
+* log(Pr(Good)/Pr(Poor)) = 2.215 - 1.151(Has.Online.Delivery) - 0.006(Votes)
+* log(Pr(Very Good)/Pr(Poor)) = 1.296 - 1.870(Has.Online.Delivery) - 0.007(Votes)
+* log(Pr(Excellent)/Pr(Poor)) = -0.036 - 2.8131(Has.Online.Delivery) - 0.008(Votes)
+
+# Effect of Independant Variables on Prediction Outcomes
+
+Using the above model, odds ratios were generated to observe the effect that changing the two predictor variables independently had on the the response levels.
+
+```{r}
+fit.e = exp(coef(fit.bic.nom))
+stargazer(fit.bic.nom, type = "text", coef=list(fit.e), p.auto=FALSE)
+```
+
+Here, it can be seen restaurants with online delivery are .298 as likely than restaurants without online delivery to rated average rather than poor. Furthermore, this trend is shown across all the levels, suggesting that generally, a restaurant with online delivery is more likely to be rated poor than any other level. For the Votes variable, a one unit increase in votes is shown to increase the odds of a restaurant being rated excellent as opposed to poor by 1.008. In fact, an increase in votes essentially translates into a restaurant being rating anything other poor across all levels, except for the Average level.
+
+\newpage
+
+# Model Prediction
+
+In order to gain some more insight into the model's performance, a new dataset was constructed and fed into the model. The results are plotted below:
+
+```{r, echo=FALSE}
+#prediction dataframe
+dvotes <- data.frame(Has.Online.delivery = rep(c("Yes", "No"), each = 50), 
+                     Votes = rep(c(5, 125, 255, 505, 755, 1005, 1205, 1505, 2005, 2505,
+                                   3005, 3505, 4005, 4505, 5005, 5505, 6005, 6505,7005,
+                                   7505, 8005, 8505, 9005, 9505, 10005), 4))
+
+#generate predictions using model
+pp.votes <- cbind(dvotes, predict(fit.bic.nom, newdata = dvotes, type = "probs", se = TRUE))
+#melt for visualisation
+lpp <- melt(pp.votes, id.vars = c("Has.Online.delivery", "Votes"), value.name = "Probability")
+
+
+ggplot(lpp, aes(x = Votes, y = Probability, colour = Has.Online.delivery)) + 
+  geom_line() + facet_grid(variable ~ ., scales = "free") + theme_minimal()+
+  labs(title="Probability of Rating Levels by Votes and Online Delivery")
+```
+
+\newpage
+
+#Comparing Prediction Outcomes to Observations
+
+The full dataset was fed into the prediction model to obtain prediction response for the `Rating.text` variable. These results are compared to the actual observations in the plot below:
+
+```{r, echo=FALSE}
+#generating predictions over dataset
+pred<-data.table(predict(fit.bic.nom,newdata = zom.r, type = "class"))
+pred[, `:=` (Count = .N), by=V1]
+pred<-data.frame(subset(unique(pred)))
+pred$prop<-pred$Count/sum(pred$Count)
+
+add<-data.frame("Poor",0,0)
+names(add)<-c("V1","Count","prop")
+pred<-rbind(pred,add)
+
+#actual observations in same format as above
+zom.p<-zom.r$Rating.text
+zom.p<-data.table(zom.p)[, `:=` (Count = .N), by=zom.p]
+zom.p<-data.frame(subset(unique(zom.p)))
+zom.p$prop<-zom.p$Count/sum(zom.p$Count)
+
+#matching variable names for merge
+colnames(pred)[1]<-"rating"
+colnames(zom.p)[1]<-"rating"
+
+#merging and creating distinction variable
+comp<-rbind(pred,zom.p)
+comp$type<-rep(c("prediction","actual"),each = 5)
+
+#actual vs predicted
+ggplot(comp, aes(x=rating,y=prop,fill=type))+
+  geom_bar(stat="identity",position = "dodge")+
+  #geom_errorbar(aes(ymin=lwr.ci, ymax=upr.ci),position = "dodge")+#better in table?
+  labs(title="Comparison of Predictions and Actual Observations",
+       y="Proportion of Type",x="Rating")+theme_minimal()
+```
+
+```{r}
+ci.table<-MultinomCI(pred$Count,.95,"wald")
+ci.table#not sure if right...
+```
+
 
 # Summary
 
