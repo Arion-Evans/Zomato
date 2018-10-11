@@ -216,6 +216,12 @@ The four logistic regression equations associated with the multinominal model de
 * log(Pr(Very Good)/Pr(Poor)) = 1.345 - 1.768(Has.Online.Delivery) - 0.007(Votes)
 * log(Pr(Excellent)/Pr(Poor)) = 0.039 - 2.766(Has.Online.Delivery) - 0.007(Votes)
 
+# Paramter Confidence Intervals
+
+```{r}
+confint(fit.bic.nom, level=0.95)
+```
+
 
 # Effect of Independant Variables on Prediction Outcomes
 
@@ -226,7 +232,7 @@ fit.e = exp(coef(fit.bic.nom))
 stargazer(fit.bic.nom, type = "text", coef=list(fit.e), p.auto=FALSE)
 ```
 
-Here, it can be seen restaurants with online delivery are .307 as likely than restaurants without online delivery to rated average rather than poor. Furthermore, this trend is shown across all the levels, suggesting that generally, a restaurant with online delivery is more likely to be rated poor than any other level. For the Votes variable, a one unit increase in votes is shown to increase the odds of a restaurant being rated excellent as opposed to poor by 1.007. In fact, an increase in votes essentially translates into a restaurant being more likely to be rated anything other poor across all levels, except for the Average level.
+Here, it can be seen restaurants with online delivery are .307 times more likely than restaurants without online delivery to be rated average rather than poor. Furthermore, this trend is shown across all the levels, suggesting that generally, a restaurant with online delivery is more likely to be rated poor than any other level. For the Votes variable, a one unit increase in votes is shown to increase the odds of a restaurant being rated excellent as opposed to poor by 1.007. In fact, an increase in votes essentially translates into a restaurant being more likely to be rated anything other poor across all levels, except for the Average level.
 
 \newpage
 
@@ -290,11 +296,6 @@ ggplot(comp, aes(x=rating,y=prop,fill=type))+
   #geom_errorbar(aes(ymin=lwr.ci, ymax=upr.ci),position = "dodge")+#better in table?
   labs(title="Comparison of Predictions and Actual Observations",
        y="Proportion of Type",x="Rating")+theme_minimal()
-```
-
-```{r}
-ci.table<-MultinomCI(pred$Count,.95,"wald")
-ci.table#not sure if right...
 ```
 
 
