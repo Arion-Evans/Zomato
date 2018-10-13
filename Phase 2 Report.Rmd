@@ -1,7 +1,7 @@
 ---
 title: "Predicting Zomato restaurant ratings with logistic regression"
 author: "Arion Barzoucas-Evans (s3650046) & Joshua Grosman (s3494389)"
-date: "06/10/2018"
+date: "13/10/2018"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -18,7 +18,7 @@ header-includes: \usepackage{float}
 linkcolor: blue
 documentclass: article
 subtitle: MATH 1298 Analysis of Categorical Data Project Phase II
-bibliography: references.bib
+bibliography: references2.bib
 ---
 
 
@@ -38,7 +38,8 @@ tab_nums(name = "data.preview")
 tab_nums(name = "model.comp.bic")
 
 fig_nums(name = "search.1.bic.plot", caption = "Fitted multinomial regression models and their BIC values.")
-
+fig_nums(name = "model.probs", caption = "Probability of each rating level by number of votes and whether the restaurant offers online delivery or not according to the multinomial logistic regression model.")
+fig_nums(name = "model.pred", caption = "Bar plot comparing the proportion of the rating levels in the test dataset with the proportion of the rating levels of the predictions made by the model.")
 
 ```
 
@@ -52,9 +53,9 @@ During phase I of this project, exploratory data analysis was performed on data 
 
 # Methodology
 
-Following some final minor data preparation, a multinomial regression model will be fitted to the Zomato data. Firstly, the data will be split into training and test sets (80:20) to enable unbaised accuracy assessments. The response variable for the model will be `Rating.text` having the following levels: "Poor", "Average", "Good", "Very Good", and "Excellent". There are a total of 7 explanatory independent variables in the dataset out of which only the most significant variables will be included in the model. This will be accomplished by performing an exhaustive search of all possible regression models and selecting the model with the lowest BIC value. Due to computational constraints, feature selection will only consider one-way interactions between predictor variables. 
+Following some final minor data preparation, a multinomial logistic regression model will be fitted to the Zomato data. Firstly, the data will be split into training and test sets (80:20) to enable unbiased accuracy assessments. The response variable for the model will be `Rating.text` having the following levels: "Poor", "Average", "Good", "Very Good", and "Excellent". There are a total of 7 explanatory independent variables in the dataset out of which only the most significant variables will be included in the model. This will be accomplished by performing an exhaustive search of all possible regression models and selecting the model with the lowest BIC value. Due to computational constraints, feature selection will only consider one-way interactions between predictor variables. 
 
-The chosen predictors will then be included into a multinomial logistic regression model. Furthermore, as the response variable is ordinal, a proportional-odds cumulative logitistic model will also be constructed. The effect of the chosen predictors and overall model performance will then be examined and the best model will be identified based primarily on parameter significant and the residual deviance of the models. The relationship between the predictor variables and the probability of each response level will be further explored via odds ratios and visual representations. Finally, the test data will be fed into model, and the predictions will compared to actual observations. 
+The chosen predictors will then be included into a multinomial logistic regression model. Furthermore, as the response variable is ordinal, a proportional-odds cumulative logistic model will also be constructed. The effect of the chosen predictors and overall model performance will then be examined, and the best model will be identified based primarily on parameter significance, and the residual deviance of the models. The relationship between the predictor variables and the probability of each response level will be further explored via examination of odds probabilities and visual representations. Finally, the test data will be fed into the model, and the predictions will be compared to actual observations. 
 
 The following `R` packages will be utilised to accomplice these tasks:
 
@@ -68,6 +69,8 @@ library(stargazer)
 library(data.table)
 library(dplyr)
 library(ggplot2)
+library(png)
+library(kableExtra)
 ```
 
 
@@ -77,11 +80,13 @@ library(ggplot2)
 
 `r tab_nums("data.preview", display = "cite")` displays the first 10 rows of the Zomato data. The levels for the `Rating.text` and `continent` were reordered so that "Poor" and "Rest of World" are the base levels for each variable respectively. This way 4 logistic regression models will be built, each comparing one level of the `Rating.text` variable to its base level ("Poor"). The data was then split into training and test sets via stratified sampling.
 
-```{r}
+```{r, echo=FALSE}
 zomato<-readRDS("zomato_phase2.rds")
 
 kable(head(zomato, n = 10),
-      caption = "First 10 rows of the Zomato dataset.")
+      caption = "First 10 rows of the Zomato dataset.",
+      format = "latex") %>% kable_styling(latex_options = c("scale_down","HOLD_position"))
+
 ```
 
 ```{r}
@@ -95,7 +100,8 @@ zomato$Rating.text<-factor(zomato$Rating.text,
 
 #continent (base=rest of world)
 zomato$continent<-factor(zomato$continent, 
-                           levels = c("Rest of World", "Europe", "Asia","North America", "Oceania")) 
+                           levels = c("Rest of World", "Europe", 
+                                      "Asia","North America", "Oceania")) 
 
 zomato$ID = seq(1,nrow(zomato),1) # for splitting dataset
 
@@ -116,7 +122,10 @@ zomato.test = zomato.test[,-c("ID")]
 
 # Feature Selection
 
-```{r, eval=FALSE}
+Next, the most important features in the dataset will be selected to be used in the multinomial regression model. To do this, an exhaustive search was performed where all possible logistic regression models (excluding 2-way interactions) were fitted and their BIC values were recorded. `r tab_nums("model.comp.bic", display = "cite")` displays the top 5 models fitted in terms of BIC while `r fig_nums("search.1.bic.plot", display = "cite")` shows all the fitted models and their BIC values. From this, it is clear that the best model to utilise should only include the `Has.Online.delivery` and `Votes` predictors. The small number of predictors is not surprising given that BIC favours smaller models.
+
+
+```{r, eval=FALSE, echo=FALSE}
 set.seed(123)
 search.1way.bic <- glmulti(y = Rating.text ~ ., 
                          data = zomato.train, 
@@ -135,35 +144,39 @@ plot(search.1way.bic, type = "p")
 ```
 
 ```{r, echo=FALSE}
-search.1way.bic = readRDS("Feature Selection/search.1way.bic.rds")
-aa <- weightable(search.1way.bic)
-model.comp.bic = cbind(model = aa[1:5,1], round(aa[1:5,2:3], digits = 3))
+
+aa <- readRDS("Feature Selection/1-way BIC/top5.1way.bic.rds")
+model.comp.bic = cbind(model = aa[1:5,1], round(aa[1:5,2], digits = 3))
 kable(model.comp.bic,
       caption = "Top 5 multinomial regression models according to BIC.")
 ```
 
 ```{r, echo=FALSE}
-plot(search.1way.bic, type = "p")
+img <- readPNG("Feature Selection/1-way BIC/1way.BIC.plot.png")
+grid::grid.raster(img)
 ```
 `r fig_nums("search.1.bic.plot")`
 
-From this, it is clear that the best model to utilise should only include the `Has.Online.delivery` and `Votes` predictors. This small number of predictors is not surprising given that BIC favours smaller models.
+
 
 \newpage
 
 # Model Fitting
 
-### Nominal Model
+## Nominal Model
 
 A multinomial logistic regression model was fitting using the variables identified in the previous section.
 
 ```{r, eval=FALSE}
-fit.bic.nom<-multinom(formula = Rating.text ~ Has.Online.delivery  + Votes, data=zomato.train)
+fit.bic.nom<-multinom(formula = Rating.text ~ Has.Online.delivery  + Votes, 
+                      data=zomato.train)
 ```
 
 ```{r, echo=FALSE}
 fit.bic.nom<-readRDS("Models/bic_nom_TRAIN.rds")
 ```
+
+\hfill\break
 
 The significance of the predictors was assessed below using an LRT for independence.
 
@@ -171,9 +184,9 @@ The significance of the predictors was assessed below using an LRT for independe
 Anova(fit.bic.nom)
 ```
 
-The predictors are shown to be highly signficiant with p < .001 in both cases.
+\hfill\break
 
-The coefficients of the 4 regression models are summarised below:
+The predictors are shown to be highly significant with p < .001 in both cases. The coefficients of the 4 regression models are summarised below:
 
 ```{r, echo=FALSE}
 summary(fit.bic.nom)
@@ -181,23 +194,28 @@ summary(fit.bic.nom)
 
 \newpage
 
-### Ordinal Model
+## Ordinal Model
 
-A proportional-odds cumulative logitistic model was also constructed using `Votes` and `Has.Online.delivery` as predictors.
+A proportional-odds cumulative logistic model was also constructed using `Votes` and `Has.Online.delivery` as predictors.
 
 ```{r,eval=FALSE}
-fit.bic.ord<-polr(formula = Rating.text ~ Has.Online.delivery  + Votes, data=zomato.train,  method = "logistic")
+fit.bic.ord<-polr(formula = Rating.text ~ Has.Online.delivery  + Votes, 
+                  data=zomato.train,  method = "logistic")
 ```
 
 ```{r, echo=FALSE}
 fit.bic.ord<-readRDS("Models/bic_ord_TRAIN.rds")
 ```
 
-Again, an LRT was employed to check the signficance of predictors.
+\hfill\break
 
-```{r, echo= FALSE}
+Again, an LRT was employed to check the significance of predictors.
+
+```{r, warning=FALSE, message=FALSE}
 Anova(fit.bic.ord)
 ```
+
+\hfill\break
 
 Both predictors are shown to be highly significant at p < .001. Interestingly, the p-value for `Has.Online.Delivery` is higher in this model than the nominal model assessed previously, however here the value is still very small.
 
@@ -207,44 +225,53 @@ The model summary is depicted below:
 summary(fit.bic.ord)
 ```
 
-## Model Comparison
-
-Comparison of the nominal and ordinal models specified above suggested that the nominal model was superior. This conclusion is based mostly on the differences in the residual deviance of the models. The nominal model had a lower deviance of 11559.63 , while the ordinal model's was 13007.16. Furthermore, it was seen that the `Has.Online.Delivery` predictor was slightly more significant within the nominal model compared to the ordinal one. As such, the nominal model was selected as the best model.
-
 \newpage
 
-# Final Model
+## Model Comparison
+
+Comparison of the nominal and ordinal models specified above suggested that the nominal model was superior. This conclusion is based mostly on the differences in the residual deviance of the models. The nominal model had a lower deviance of 11,559.63 , while the ordinal model's was 13,007.16. Furthermore, it was seen that the `Has.Online.Delivery` predictor was slightly more significant within the nominal model compared to the ordinal one. As such, the nominal model was selected as the best model.
+
+
+
+## Final Model
 
 The four logistic regression equations associated with the multinomial model defined previously are stated below:
 
-* log(Pr(Average)/Pr(Poor)) = 4.014 - 1.179(Has.Online.Delivery) - 0.007(Votes)
-* log(Pr(Good)/Pr(Poor)) = 2.263 - 1.120(Has.Online.Delivery) - 0.005(Votes)
-* log(Pr(Very Good)/Pr(Poor)) = 1.345 - 1.768(Has.Online.Delivery) - 0.007(Votes)
-* log(Pr(Excellent)/Pr(Poor)) = 0.039 - 2.766(Has.Online.Delivery) - 0.007(Votes)
+\begin{itemize}  
+\item $log(\frac{Pr(Average)}{Pr(Poor)}) = 4.014 - 1.179 \times Has.Online.Delivery - 0.007 \times Votes$
+\item $log(\frac{Pr(Good)}{Pr(Poor)}) = 2.263 - 1.11 \times Has.Online.Delivery + 0.005 \times Votes$
+\item $log(\frac{Pr(Very Good)}{Pr(Poor)}) = 1.345 - 1.768 \times Has.Online.Delivery + 0.007 \times Votes$ 
+\item $log(\frac{Pr(Excellent)}{Pr(Poor)}) = 0.039 - 2.766 \times Has.Online.Delivery + 0.007 \times Votes$ 
+\end{itemize}
 
 ### Parameter Confidence Intervals
 
-```{r}
+The confidence intervals for the model's coefficients are shown below. It can be observed that all intervals are relatively narrow, and no interval contains 0.
+
+```{r, echo=FALSE}
 confint(fit.bic.nom, level=0.95)
 ```
 
+\newpage
 
 # Effect of Predictor Variables on Prediction Outcomes
 
-### Odds Ratios
+## Odds
 
-Using the above model, odds ratios were generated to observe the effect of changing the two predictor variables independently had on the the response levels.
+Using the above model, odds probabilities were generated to observe the effect of changing the two predictor variables independently on the response levels.
 
 ```{r}
 fit.e = exp(coef(fit.bic.nom))
 stargazer(fit.bic.nom, type = "text", coef=list(fit.e), p.auto=FALSE)
 ```
 
-Here, it can be seen restaurants with online delivery are .307 times more likely than restaurants without online delivery to be rated average rather than poor. Furthermore, this trend is shown across all the levels, suggesting that generally a restaurant with online delivery is more likely to be rated poor than any other level. For the Votes variable, a one unit increase in votes is shown to increase the odds of a restaurant being rated excellent as opposed to poor by 1.007. In fact, an increase in votes essentially translates into a restaurant being more likely to be rated anything other poor across all levels, except for the Average level where the odds ratio is less than 1.
+\hfill\break
+
+Here, it can be seen restaurants with online delivery are .307 times more likely than restaurants without online delivery to be rated average rather than poor. Furthermore, this trend is shown across all the levels, suggesting that generally a restaurant with online delivery is more likely to be rated poor than any other level. For the Votes variable, a one unit increase in votes is shown to increase the odds of a restaurant being rated excellent as opposed to poor by 1.007. In fact, an increase in votes essentially translates into a restaurant being more likely to be rated anything other poor across all levels, except for the Average level where the odds are less than 1.
 
 \newpage
 
-### Relationship Between Predictors and Response Probability
+## Relationship Between Predictors and Response Probability
 
 The effect of the predictor variables on the response level probabilities was further explored by feeding a dummy dataset into the model. The associated plot is shown below:
 
@@ -265,16 +292,19 @@ ggplot(lpp, aes(x = Votes, y = Probability, colour = Has.Online.delivery)) +
   geom_line() + facet_grid(variable ~ ., scales = "free") + theme_minimal()+
   labs(title="Probability of Rating Levels by Votes and Online Delivery")
 ```
+`r fig_nums("model.probs")`
 
-This visualisation provides valuable insight into how the predictors effect prediction outcomes. For example, it is clear that regardless of whether a restaurant has online delivery, if it has received over 5000 votes, it is almost guaranteed to be rated as either very good or excellent. Furthermore, excellent restaurants are more likely to not offer online delievery regardless of how many votes are associated with it. This may be due to excellent-rated restaurant being "high-class" and therefore only offering in-house dining. 
+\hfill\break
 
-Another interesting insight relates to the "poor" facet. Evidently there is much higher relative probability of a poor-rated restaurant having online delivery than not - apparently much higher than any other response level. This might explain why the odds ratios calculated in the previous section suggested that restaurants which did offer online delivery were more likely to be rated poor than other level.
+This visualisation provides valuable insight into how the predictors effect prediction outcomes. For example, it is clear that regardless of whether a restaurant has online delivery, if it has received over 5,000 votes, it is almost guaranteed to be rated as either very good or excellent. Furthermore, excellent restaurants are more likely to not offer online delivery regardless of how many votes are associated with it. This may be due to excellent-rated restaurant being "high-class" and therefore only offering in-house dining. 
+
+Another interesting insight relates to the "poor" facet. Evidently there is much higher relative probability of a poor-rated restaurant having online delivery than not - apparently much higher than any other response level. This might explain why the odds calculated in the previous section suggested that restaurants which did offer online delivery were more likely to be rated poor than other level.
 
 \newpage
 
-#Model Prediction
+# Model Prediction
 
-The testing dataset was fed into the prediction model to obtain prediction responses for the `Rating.text` variable. These results were compared to the associated actual observations in the plot below:
+The test dataset was fed into the prediction model to obtain prediction responses for the `Rating.text` variable. These results were compared to the associated actual observations in the plot below:
 
 ```{r, echo=FALSE}
 zom.t<-zomato.test[,c("Rating.text","Has.Online.delivery","Votes")]
@@ -310,21 +340,46 @@ ggplot(comp, aes(x=rating,y=prop,fill=type))+
   labs(title="Comparison of Predictions and Actual Observations",
        y="Proportion of Type",x="Rating")+theme_minimal()
 ```
+`r fig_nums("model.pred")`
 
-This plot highlights that the model is not performing very well. While it was able to predict the "good" rating level fairly accurately, the proportion of predicted average-rated restaurants is much higher than the true proportion. Similarly, the proportion of predicted "very good" and "excellent" levels are much lower than true levels. The model did not predict any poor-rated restaurants. This issues may be related to the imbalance across the levels.
+\hfill\break
+
+This plot highlights that the model is not performing very well. While the proportion of the predicted "good" rating level is fairly close to the actual proportion, the proportion of predicted average-rated restaurants is much higher than the true proportion. Similarly, the proportion of predicted "very good" and "excellent" levels are much lower than true levels. The model did not predict any poor-rated restaurants. This issue may be related to the imbalance across the levels. This is further highlighted in the confusion matrix below where it can be seen that the model has mostly predicted an "Average" Rating for restaurants while it never made a "Poor" prediction and very few "Very Good" and "Excellent" predictions. This results in a mmce of 0.63.
+
+```{r, echo=FALSE}
+zom.t$pred = predict(fit.bic.nom,newdata = zom.t, type = "class")
+table(zom.t$Rating.text,zom.t$pred, dnn = c("Actual","Predicted"))
+```
+
+
+\newpage
 
 # Summary
 
+Two logistic regression models were considered in order to predict Zomato restaurant ratings; a multinomial and a proportional odds logistic regression model. For both models, the most important features of the dataset were used. These were found to be the number of votes a restaurant has received and whether the restaurant offers online delivery or not. The multinomial logistic regression model was found to perform slighlty better than the proportional odds model and was used for the rest of the analysis. The equations associated with the multinomial model are:
+
+\hfill\break
+
+\begin{itemize}  
+\item $log(\frac{Pr(Average)}{Pr(Poor)}) = 4.014 - 1.179 \times Has.Online.Delivery - 0.007 \times Votes$
+\item $log(\frac{Pr(Good)}{Pr(Poor)}) = 2.263 - 1.11 \times Has.Online.Delivery + 0.005 \times Votes$
+\item $log(\frac{Pr(Very Good)}{Pr(Poor)}) = 1.345 - 1.768 \times Has.Online.Delivery + 0.007 \times Votes$ 
+\item $log(\frac{Pr(Excellent)}{Pr(Poor)}) = 0.039 - 2.766 \times Has.Online.Delivery + 0.007 \times Votes$ 
+\end{itemize}
+
+\hfill\break
+
+According to this model, it was found that restaurants offering online delivery are more likely to be rated "Poor" than any other rating. Additionally, votes had a positive impact on a restaurant's rating as restaurants with more than 5,000 votes were almost guaranteed to have a "Very Good" or "Excellent" rating. However, in spite of these results, using 20% of the data as a test set, the model was found to be quite inaccurate in predicting the actual restaurant ratings. This could be attributed to the imbalance of the rating levels in the dataset as well as the potential existance of variables (not present in the dataset) more closely correlated to a restaurant's rating.
 
 \newpage
 
 # References
 
-[Kaggle](https://www.kaggle.com/shrutimehta/zomato-restaurants-data)
+Data: [https://www.kaggle.com/shrutimehta/zomato-restaurants-data](https://www.kaggle.com/shrutimehta/zomato-restaurants-data)
 
 ---
 nocite: | 
-  @mlr, @data.table, @dplyr, @plyr, @ggplot2, @vcd, @knitr, @kableExtra,
+  @nnet, @car, @glmulti, @knitr, @captioner, @stargazer, @data.table, @dplyr, @ggplot2, @png, @kableExtra
 ...
 
 
