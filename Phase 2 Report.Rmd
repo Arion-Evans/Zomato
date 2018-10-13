@@ -146,7 +146,7 @@ plot(search.1way.bic, type = "p")
 ```{r, echo=FALSE}
 
 aa <- readRDS("Feature Selection/1-way BIC/top5.1way.bic.rds")
-model.comp.bic = cbind(model = aa[1:5,1], round(aa[1:5,2], digits = 3))
+model.comp.bic = cbind(model = aa[1:5,1], round(aa[1:5,2:3], digits = 3))
 kable(model.comp.bic,
       caption = "Top 5 multinomial regression models according to BIC.")
 ```
